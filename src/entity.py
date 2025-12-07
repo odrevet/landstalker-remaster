@@ -17,17 +17,21 @@ class Entity:
     _sprite_properties_cache: ClassVar[Dict[int, Dict[str, Any]]] = {}
     
     # Sprite mapping: entity_name -> sprite_id
-    _sprite_id_map: ClassVar[Dict[str, Optional[int]]] = {
+    _sprite_id_map: ClassVar[Dict[str, int]] = {
         'Nigel': 0,
+        'Chest': 36,
+        'Large Gray Ball': 45,
+        'Small Yellow Platform': 49,
+        'Crate': 91,
         'Raft': 92,
-        'Crate': None,
-        'Chest': None,
     }
     
     # Sprite mapping: entity_class -> (sprite filename, frame_width, frame_count)
     _sprite_map: ClassVar[Dict[str, Tuple[str, int, int]]] = {
         'Crate': ('data/sprites/SpriteGfx091Anim000.png', 32, 1),
         'Chest': ('data/sprites/SpriteGfx036Anim000.png', 32, 5),
+        'Small Yellow Platform': ('data/sprites/SpriteGfx049Anim000.png', 32, 1),
+        'Large Grey Ball': ('data/sprites/SpriteGfx045Anim000.png', 64, 1),
         'Raft': ('data/sprites/SpriteGfx092Anim000.png', 64, 1),
     }
     
