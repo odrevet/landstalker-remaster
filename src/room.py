@@ -8,7 +8,7 @@ from hero import Hero
 from utils import cartesian_to_iso, iso_to_cartesian
 from warp import Warp
 from entity import Entity
-
+from heightmap import Heightmap
 
 class Tile:
     def __init__(self, offset: Tuple[int, int]) -> None:
@@ -52,7 +52,7 @@ class Layer:
             blockset.draw(surface, self.data.offsetx, camera_x, camera_y)
 
 
-class Tiledmap:
+class Room:
     def __init__(self) -> None:
         self.data: Optional[TiledMap] = None
         self.background_layer: Optional[Layer] = None
@@ -60,6 +60,8 @@ class Tiledmap:
         self.room_number: Optional[int] = None
         self.warps: List[Warp] = []
         self.entities: List[Entity] = []
+        self.heightmap: Heightmap = Heightmap()
+        self.room_properties: Dict[str, Any] = {}
 
     def load(self, room_number: int) -> None:
         tmx_filename: str = f"data/rooms/Room{room_number:03d}.tmx"
@@ -76,7 +78,8 @@ class Tiledmap:
         
         self.room_number = room_number
 
-        self.room_properties: Dict[str, Any] = {}
+        # Load room properties
+        self.room_properties = {}
         if hasattr(self.data, "properties") and self.data.properties:
             for key, value in self.data.properties.items():
                 self.room_properties[key] = value
@@ -84,6 +87,9 @@ class Tiledmap:
         print("Room properties loaded:")
         for k, v in self.room_properties.items():
             print(f"  {k}: {v}")
+
+        # Load heightmap from properties
+        self.heightmap.load_from_properties(self.room_properties)
 
         # Load warps as Warp objects
         self.warps = []
@@ -120,7 +126,6 @@ class Tiledmap:
                 # Create Entity object
                 entity = Entity(entity_data)
                 
-
                 entity.x -= 12  # hardcoded offsets
                 entity.y -= 12
 

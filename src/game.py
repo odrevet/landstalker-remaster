@@ -10,7 +10,7 @@ from pygame_gui.elements.ui_text_box import UITextBox
 
 from hero import Hero
 from utils import *
-from tiledmap import Tiledmap
+from room import Room
 from heightmap import Heightmap, HeightmapCell
 from debug import draw_hero_boundbox, draw_heightmap, draw_warps, draw_entities_boundboxes
 from collision import (resolve_entity_collision, get_entity_top_at_position, check_collids_entity, get_entity_hero_is_standing_on,
@@ -110,20 +110,15 @@ class Game:
         self.fade_surface.set_alpha(0)
 
         # Load room
-        self.tiled_map: Tiledmap = Tiledmap()
-        self.tiled_map.load(self.room_number)
-        room_map: str = self.tiled_map.data.properties['RoomMap']
+        self.room: Room = Room()
+        self.room.load(self.room_number)
         
-        # Load heightmap
-        self.heightmap: Heightmap = Heightmap()
-        self.heightmap.load(room_map)
-        
-        tile_h = self.tiled_map.data.tileheight
-        for entity in self.tiled_map.entities:
+        tile_h = self.room.data.tileheight
+        for entity in self.room.entities:
             entity.set_world_pos(tile_h)
             entity.update_screen_pos(
-                self.heightmap.left_offset,
-                self.heightmap.top_offset,
+                self.room.heightmap.left_offset,
+                self.room.heightmap.top_offset,
                 self.camera_x,
                 self.camera_y,
                 tile_h
@@ -144,7 +139,7 @@ class Game:
 
     def fix_hero_spawn_position(self) -> None:
         """Fix hero position if spawned in invalid location"""
-        tile_h: int = self.tiled_map.data.tileheight
+        tile_h: int = self.room.data.tileheight
         
         # Check if hero is out of bounds
         hero_pos = self.hero.get_world_pos()
@@ -153,15 +148,15 @@ class Game:
         
         # If out of bounds or on unwalkable tile, find first walkable tile
         if (hero_tile_x < 0 or hero_tile_y < 0 or
-            hero_tile_x >= self.heightmap.get_width() or
-            hero_tile_y >= self.heightmap.get_height() or
-            not self.heightmap.get_cell(hero_tile_x, hero_tile_y) or
-            not self.heightmap.get_cell(hero_tile_x, hero_tile_y).is_walkable()):
+            hero_tile_x >= self.room.heightmap.get_width() or
+            hero_tile_y >= self.room.heightmap.get_height() or
+            not self.room.heightmap.get_cell(hero_tile_x, hero_tile_y) or
+            not self.room.heightmap.get_cell(hero_tile_x, hero_tile_y).is_walkable()):
             
             # Find first walkable tile
-            for y in range(self.heightmap.get_height()):
-                for x in range(self.heightmap.get_width()):
-                    cell: Optional[HeightmapCell] = self.heightmap.get_cell(x, y)
+            for y in range(self.room.heightmap.get_height()):
+                for x in range(self.room.heightmap.get_width()):
+                    cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(x, y)
                     if cell and cell.is_walkable():
                         # Move hero to center of this tile
                         new_x: float = x * tile_h + tile_h // 2
@@ -169,8 +164,8 @@ class Game:
                         new_z: float = cell.height * tile_h
                         self.hero.set_world_pos(
                             new_x, new_y, new_z,
-                            self.heightmap.left_offset,
-                            self.heightmap.top_offset,
+                            self.room.heightmap.left_offset,
+                            self.room.heightmap.top_offset,
                             self.camera_x,
                             self.camera_y
                         )
@@ -178,15 +173,15 @@ class Game:
                         return
         
         # Hero is in bounds, check if Z is correct
-        cell: Optional[HeightmapCell] = self.heightmap.get_cell(hero_tile_x, hero_tile_y)
+        cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(hero_tile_x, hero_tile_y)
         if cell:
             ground_height: float = cell.height * tile_h
             # If hero is below ground, place on ground
             if hero_pos.z < ground_height:
                 self.hero.set_world_pos(
                     hero_pos.x, hero_pos.y, ground_height,
-                    self.heightmap.left_offset,
-                    self.heightmap.top_offset,
+                    self.room.heightmap.left_offset,
+                    self.room.heightmap.top_offset,
                     self.camera_x,
                     self.camera_y
                 )
@@ -195,8 +190,8 @@ class Game:
     def center_camera_on_hero(self) -> None:
         """Center the camera on the hero's position"""
         self.hero.update_camera(
-            self.heightmap.left_offset,
-            self.heightmap.top_offset,
+            self.room.heightmap.left_offset,
+            self.room.heightmap.top_offset,
             0,  # Use 0,0 for camera to get absolute screen position
             0
         )
@@ -207,8 +202,8 @@ class Game:
         
         # Update hero screen position with new camera
         self.hero.update_camera(
-            self.heightmap.left_offset,
-            self.heightmap.top_offset,
+            self.room.heightmap.left_offset,
+            self.room.heightmap.top_offset,
             self.camera_x,
             self.camera_y
         )
@@ -268,8 +263,8 @@ class Game:
         
         if moved:
             self.hero.update_camera(
-                self.heightmap.left_offset,
-                self.heightmap.top_offset,
+                self.room.heightmap.left_offset,
+                self.room.heightmap.top_offset,
                 self.camera_x,
                 self.camera_y
             )
@@ -312,7 +307,7 @@ class Game:
     
     def check_warp_collision(self) -> bool:
         """Check if hero is colliding with any warp and handle room transition."""
-        tile_h: int = self.tiled_map.data.tileheight
+        tile_h: int = self.room.data.tileheight
         
         # Get hero's bounding box using helper function
         hero_x, hero_y, hero_width, hero_height = self.hero.get_bounding_box(tile_h)
@@ -330,28 +325,24 @@ class Game:
         self.prev_hero_tile_x = current_tile_x
         self.prev_hero_tile_y = current_tile_y
         
-        for warp in self.tiled_map.warps:
-            if warp.check_collision(hero_x, hero_y, hero_width, hero_height, tile_h, self.tiled_map.room_number, self.heightmap):
+        for warp in self.room.warps:
+            if warp.check_collision(hero_x, hero_y, hero_width, hero_height, tile_h, self.room.room_number, self.room.heightmap):
                 target_room: int = warp.get_target_room(self.room_number)
                 
                 if target_room != self.room_number:
                     # define warp callback to execute while screen is black
                     def do_warp():
                         self.room_number = target_room
-                        self.tiled_map.load(self.room_number)
+                        self.room.load(self.room_number)
 
-                        room_map = self.tiled_map.data.properties['RoomMap']
-                        self.heightmap = Heightmap()
-                        self.heightmap.load(room_map)
-
-                        dest_tile_x, dest_tile_y = warp.get_destination(self.room_number, self.heightmap)
-                        dest_cell: Optional[HeightmapCell] = self.heightmap.get_cell(dest_tile_x, dest_tile_y)
+                        dest_tile_x, dest_tile_y = warp.get_destination(self.room_number, self.room.heightmap)
+                        dest_cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(dest_tile_x, dest_tile_y)
                         dest_tile_z: int = dest_cell.height if dest_cell else 0
 
                         self.hero.set_world_pos(
                             dest_tile_x * tile_h, dest_tile_y * tile_h, dest_tile_z * tile_h,
-                            self.heightmap.left_offset,
-                            self.heightmap.top_offset,
+                            self.room.heightmap.left_offset,
+                            self.room.heightmap.top_offset,
                             self.camera_x,
                             self.camera_y
                         )
@@ -372,29 +363,26 @@ class Game:
     
     def check_fall(self) -> bool:
         """Check if hero is falling and handle room transition"""
-        tile_h: int = self.tiled_map.data.tileheight
+        tile_h: int = self.room.data.tileheight
         
-        if self.hero.get_world_pos().z == 0 and self.tiled_map.room_properties["WarpFallDestination"] != 65535:
-            target = self.tiled_map.room_properties["WarpFallDestination"]
+        if self.hero.get_world_pos().z == 0 and self.room.room_properties["WarpFallDestination"] != 65535:
+            target = self.room.room_properties["WarpFallDestination"]
             print(f"falling ! {target}")
 
             def do_fall_warp():
                 self.room_number = target
-                self.tiled_map.load(self.room_number)
-                room_map = self.tiled_map.data.properties['RoomMap']
-                self.heightmap = Heightmap()
-                self.heightmap.load(room_map)
+                self.room.load(self.room_number)
                 self.camera_locked = True
                 self.center_camera_on_hero()
 
             self.start_fade(do_fall_warp)
-            self.hero._world_pos.z =  self.tiled_map.data.properties['RoomZEnd'] * tile_h
+            self.hero._world_pos.z =  self.room.data.properties['RoomZEnd'] * tile_h
 
         return False
 
     def apply_gravity(self) -> None:
         """Apply gravity to hero using bounding box corners, considering both terrain and entities"""
-        tile_h: int = self.tiled_map.data.tileheight
+        tile_h: int = self.room.data.tileheight
         
         # Get hero's foot height and bounding box
         hero_pos = self.hero.get_world_pos()
@@ -415,7 +403,7 @@ class Game:
         
         # Check if hero is above ground
         if not self.hero.is_jumping:
-            cells = self.heightmap.cells
+            cells = self.room.heightmap.cells
             
             # Find the highest ground level under the hero (terrain)
             max_ground_height: float = max(
@@ -427,7 +415,7 @@ class Game:
             
             # Check for entity surfaces below the hero (excluding grabbed entity)
             hero_x, hero_y, hero_w, hero_h = hero_bbox
-            entities_to_check = [e for e in self.tiled_map.entities 
+            entities_to_check = [e for e in self.room.entities 
                                if e is not self.hero.grabbed_entity]
             
 
@@ -469,8 +457,8 @@ class Game:
                 
                 self.hero.set_world_pos(
                     hero_pos.x, hero_pos.y, new_z,
-                    self.heightmap.left_offset,
-                    self.heightmap.top_offset,
+                    self.room.heightmap.left_offset,
+                    self.room.heightmap.top_offset,
                     self.camera_x,
                     self.camera_y
                 )
@@ -478,8 +466,8 @@ class Game:
                 # Update grabbed entity position if carrying something
                 if self.hero.is_grabbing:
                     self.hero.update_grabbed_entity_position(
-                        self.heightmap.left_offset,
-                        self.heightmap.top_offset,
+                        self.room.heightmap.left_offset,
+                        self.room.heightmap.top_offset,
                         self.camera_x,
                         self.camera_y,
                         tile_h
@@ -494,8 +482,8 @@ class Game:
                 if hero_pos.z != correct_z:
                     self.hero.set_world_pos(
                         hero_pos.x, hero_pos.y, correct_z,
-                        self.heightmap.left_offset,
-                        self.heightmap.top_offset,
+                        self.room.heightmap.left_offset,
+                        self.room.heightmap.top_offset,
                         self.camera_x,
                         self.camera_y
                     )
@@ -503,8 +491,8 @@ class Game:
                     # Update grabbed entity position if carrying something
                     if self.hero.is_grabbing:
                         self.hero.update_grabbed_entity_position(
-                            self.heightmap.left_offset,
-                            self.heightmap.top_offset,
+                            self.room.heightmap.left_offset,
+                            self.room.heightmap.top_offset,
                             self.camera_x,
                             self.camera_y,
                             tile_h
@@ -517,11 +505,11 @@ class Game:
     
     def can_move_to(self, next_x: float, next_y: float, check_cells: List[Tuple[int, int]]) -> bool:
         """Check if hero can move to the given position (heightmap check only)"""
-        tile_h: int = self.tiled_map.data.tileheight
+        tile_h: int = self.room.data.tileheight
         height_at_foot: float = self.hero.get_world_pos().z
         
         for cell_x, cell_y in check_cells:
-            cell: Optional[HeightmapCell] = self.heightmap.get_cell(cell_x, cell_y)
+            cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(cell_x, cell_y)
             if not cell or not cell.is_walkable():
                 return False
             if cell.height * tile_h > height_at_foot:
@@ -552,7 +540,7 @@ class Game:
                 self.camera_locked = True
             
             hero_pos = self.hero.get_world_pos()
-            tile_h: int = self.tiled_map.data.tileheight
+            tile_h: int = self.room.data.tileheight
             moved: bool = False
             
             # Get current bounding box corners
@@ -586,7 +574,7 @@ class Game:
                 new_bottom_x: int = int((corners[1][0] + HERO_SPEED) // tile_h)
                 new_bottom_y: int = int((corners[1][1] + HERO_SPEED) // tile_h)
                 
-                if new_right_x < self.heightmap.get_width() and self.can_move_to(
+                if new_right_x < self.room.heightmap.get_width() and self.can_move_to(
                     next_x, hero_pos.y, [(new_right_x, new_right_y), (new_bottom_x, new_bottom_y)]
                 ):
                     new_x = next_x
@@ -616,14 +604,14 @@ class Game:
                 new_bottom_x: int = int(corners[1][0] // tile_h)
                 new_bottom_y: int = int((corners[1][1] + HERO_SPEED) // tile_h)
                 
-                if new_left_y < self.heightmap.get_height() and self.can_move_to(
+                if new_left_y < self.room.heightmap.get_height() and self.can_move_to(
                     hero_pos.x, next_y, [(new_left_x, new_left_y), (new_bottom_x, new_bottom_y)]
                 ):
                     new_y = next_y
                     moved = True
             
             if moved:
-                entity = check_collids_entity(self.hero, new_x, new_y, self.tiled_map.entities, 16)
+                entity = check_collids_entity(self.hero, new_x, new_y, self.room.entities, 16)
                 if entity is not None:
                     print(f"Collids with {entity.name}")
 
@@ -631,20 +619,20 @@ class Game:
                 # This only handles horizontal collision, not Z-axis (gravity handles that)
                 new_x, new_y, touched_entity = resolve_entity_collision(
                     self.hero,
-                    self.tiled_map.entities,
+                    self.room.entities,
                     new_x,
                     new_y,
                     tile_h,
-                    self.heightmap.left_offset,
-                    self.heightmap.top_offset,
+                    self.room.heightmap.left_offset,
+                    self.room.heightmap.top_offset,
                     self.camera_x,
                     self.camera_y
                 )
                 
                 self.hero.set_world_pos(
                     new_x, new_y, hero_pos.z,
-                    self.heightmap.left_offset,
-                    self.heightmap.top_offset,
+                    self.room.heightmap.left_offset,
+                    self.room.heightmap.top_offset,
                     self.camera_x,
                     self.camera_y
                 )
@@ -652,8 +640,8 @@ class Game:
                 # Update grabbed entity position if carrying something
                 if self.hero.is_grabbing:
                     self.hero.update_grabbed_entity_position(
-                        self.heightmap.left_offset,
-                        self.heightmap.top_offset,
+                        self.room.heightmap.left_offset,
+                        self.room.heightmap.top_offset,
                         self.camera_x,
                         self.camera_y,
                         tile_h
@@ -676,18 +664,18 @@ class Game:
                 new_z: float = hero_pos.z + 2
                 self.hero.set_world_pos(
                     hero_pos.x, hero_pos.y, new_z,
-                    self.heightmap.left_offset,
-                    self.heightmap.top_offset,
+                    self.room.heightmap.left_offset,
+                    self.room.heightmap.top_offset,
                     self.camera_x,
                     self.camera_y
                 )
                 
                 # Update grabbed entity position if carrying something
-                tile_h: int = self.tiled_map.data.tileheight
+                tile_h: int = self.room.data.tileheight
                 if self.hero.is_grabbing:
                     self.hero.update_grabbed_entity_position(
-                        self.heightmap.left_offset,
-                        self.heightmap.top_offset,
+                        self.room.heightmap.left_offset,
+                        self.room.heightmap.top_offset,
                         self.camera_x,
                         self.camera_y,
                         tile_h
@@ -701,7 +689,7 @@ class Game:
     
     def check_action(self, keys: pygame.key.ScancodeWrapper) -> None:
             """Handle action button (A key) - interact with entities or pickup/place"""
-            tile_h: int = self.tiled_map.data.tileheight
+            tile_h: int = self.room.data.tileheight
             
             # Check if action button (A key) was just pressed
             if not self.is_key_just_pressed(pygame.K_a, keys):
@@ -720,10 +708,10 @@ class Game:
                 place_tile_y = int(place_y // tile_h)
                 
                 if (place_tile_x >= 0 and place_tile_y >= 0 and
-                    place_tile_x < self.heightmap.get_width() and
-                    place_tile_y < self.heightmap.get_height()):
+                    place_tile_x < self.room.heightmap.get_width() and
+                    place_tile_y < self.room.heightmap.get_height()):
                     
-                    cell = self.heightmap.get_cell(place_tile_x, place_tile_y)
+                    cell = self.room.heightmap.get_cell(place_tile_x, place_tile_y)
                     if cell:
                         place_z = cell.height * tile_h
                         
@@ -733,8 +721,8 @@ class Game:
                             place_x,
                             place_y,
                             place_z,
-                            self.tiled_map.entities,
-                            self.heightmap,
+                            self.room.entities,
+                            self.room.heightmap,
                             tile_h
                         ):
                             # Place the entity
@@ -756,7 +744,7 @@ class Game:
             # Check for entity in front of hero
             entity = get_entity_in_front_of_hero(
                 self.hero,
-                self.tiled_map.entities,
+                self.room.entities,
                 tile_h
             )
 
@@ -771,8 +759,8 @@ class Game:
                     
                     # Position entity above hero
                     self.hero.update_grabbed_entity_position(
-                        self.heightmap.left_offset,
-                        self.heightmap.top_offset,
+                        self.room.heightmap.left_offset,
+                        self.room.heightmap.top_offset,
                         self.camera_x,
                         self.camera_y,
                         tile_h
@@ -810,20 +798,15 @@ class Game:
                 room_changed = True
         
         if room_changed:
-            self.tiled_map.load(self.room_number)
+            self.room.load(self.room_number)
             self.camera_locked = True
-            
-            room_map: str = self.tiled_map.data.properties['RoomMap']
-            self.heightmap = Heightmap()
-            self.heightmap.load(room_map)
-            
             self.center_camera_on_hero()
     
     def update_hud(self) -> None:
         """Update HUD with debug information"""
         if self.debug_mode:
             hero_pos = self.hero.get_world_pos()
-            tile_h: int = self.tiled_map.data.tileheight
+            tile_h: int = self.room.data.tileheight
             tile_x: float = hero_pos.x // tile_h
             tile_y: float = hero_pos.y // tile_h
             tile_z: float = hero_pos.z // tile_h
@@ -915,14 +898,14 @@ class Game:
         self.surface.fill((0, 0, 0))
         
         # Draw map and debug
-        self.tiled_map.draw(self.surface, self.camera_x, self.camera_y, self.hero)
+        self.room.draw(self.surface, self.camera_x, self.camera_y, self.hero)
                 
         # Prepare entities for drawing (update their screen positions)
-        tile_h = self.tiled_map.data.tileheight
-        for entity in self.tiled_map.entities:
+        tile_h = self.room.data.tileheight
+        for entity in self.room.entities:
             entity.update_screen_pos(
-                self.heightmap.left_offset,
-                self.heightmap.top_offset,
+                self.room.heightmap.left_offset,
+                self.room.heightmap.top_offset,
                 self.camera_x,
                 self.camera_y,
                 tile_h
@@ -932,7 +915,7 @@ class Game:
         drawable_objects = []
         
         # Add all entities with their sort key
-        for entity in self.tiled_map.entities:
+        for entity in self.room.entities:
             if entity.world_pos is not None:
                 # Sort key: Y + (Z + height)
                 # The top of the object determines draw order in isometric view
@@ -957,21 +940,21 @@ class Game:
 
         if self.debug_mode:
             if self.is_height_map_displayed:
-                draw_heightmap(self.surface, self.heightmap, self.tiled_map.data.tileheight, 
+                draw_heightmap(self.surface, self.room.heightmap, self.room.data.tileheight, 
                             self.camera_x, self.camera_y)
 
             if self.is_boundbox_displayed:
-                draw_hero_boundbox(self.hero, self.surface, self.tiled_map.data.tileheight, 
-                                self.camera_x, self.camera_y, self.heightmap.left_offset, 
-                                self.heightmap.top_offset)
-                draw_entities_boundboxes(self.tiled_map.entities, self.surface, 
-                                        self.tiled_map.data.tileheight, self.camera_x, 
-                                        self.camera_y, self.heightmap.left_offset, 
-                                        self.heightmap.top_offset)
+                draw_hero_boundbox(self.hero, self.surface, self.room.data.tileheight, 
+                                self.camera_x, self.camera_y, self.room.heightmap.left_offset, 
+                                self.room.heightmap.top_offset)
+                draw_entities_boundboxes(self.room.entities, self.surface, 
+                                        self.room.data.tileheight, self.camera_x, 
+                                        self.camera_y, self.room.heightmap.left_offset, 
+                                        self.room.heightmap.top_offset)
 
             if self.is_warps_displayed:
-                draw_warps(self.surface, self.tiled_map.warps, self.heightmap, 
-                        self.tiled_map.data.tileheight, self.camera_x, self.camera_y, 
+                draw_warps(self.surface, self.room.warps, self.room.heightmap, 
+                        self.room.data.tileheight, self.camera_x, self.camera_y, 
                         self.room_number)
 
         # Draw UI on top of everything
