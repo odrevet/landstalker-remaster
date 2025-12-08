@@ -16,15 +16,8 @@ class Entity:
     # Sprite properties cache - loaded from YAML files
     _sprite_properties_cache: ClassVar[Dict[int, Dict[str, Any]]] = {}
     
-    # Sprite mapping: entity_name -> sprite_id
-    _sprite_id_map: ClassVar[Dict[str, int]] = {
-        'Nigel': 0,
-        'Chest': 36,
-        'Large Gray Ball': 45,
-        'Small Yellow Platform': 49,
-        'Crate': 91,
-        'Raft': 92,
-    }
+    # Entity properties cache - loaded from EntityXXXProperties.yaml files
+    _entity_properties_cache: ClassVar[Dict[int, Dict[str, Any]]] = {}
     
     # Sprite mapping: entity_class -> (sprite filename, frame_width, frame_count)
     _sprite_map: ClassVar[Dict[str, Tuple[str, int, int]]] = {
@@ -37,6 +30,39 @@ class Entity:
     
     # Default hitbox values if YAML properties are not available
     _default_hitbox: ClassVar[Tuple[float, float, float]] = (1.0, 1.0, 1.0)
+    
+    @classmethod
+    def _load_entity_properties(cls, entity_id: int) -> Optional[Dict[str, Any]]:
+        """Load entity properties from EntityXXXProperties.yaml file
+        
+        Args:
+            entity_id: The entity ID to load properties for
+            
+        Returns:
+            Dictionary of entity properties or None if not found
+        """
+        # Check cache first
+        if entity_id in cls._entity_properties_cache:
+            return cls._entity_properties_cache[entity_id]
+        
+        # Construct YAML filename
+        yaml_file = f"data/entities/Entity{entity_id:03d}Properties.yaml"
+        
+        if not os.path.exists(yaml_file):
+            print(f"Warning: Entity properties file not found: {yaml_file}")
+            cls._entity_properties_cache[entity_id] = None
+            return None
+        
+        try:
+            with open(yaml_file, 'r') as f:
+                properties = yaml.safe_load(f)
+                cls._entity_properties_cache[entity_id] = properties
+                print(f"Loaded entity properties for ID {entity_id}: {properties.get('Name', 'Unknown')}")
+                return properties
+        except Exception as e:
+            print(f"Error loading entity properties from {yaml_file}: {e}")
+            cls._entity_properties_cache[entity_id] = None
+            return None
     
     @classmethod
     def _load_sprite_properties(cls, sprite_id: int) -> Optional[Dict[str, Any]]:
@@ -72,19 +98,16 @@ class Entity:
             return None
     
     @classmethod
-    def _get_hitbox_from_yaml(cls, entity_name: str) -> Tuple[float, float, float]:
-        """Get hitbox properties from YAML file based on entity name
+    def _get_hitbox_from_yaml(cls, entity_id: int, sprite_id: int) -> Tuple[float, float, float]:
+        """Get hitbox properties from YAML file based on sprite ID
         
         Args:
-            entity_name: Name of the entity
+            entity_id: ID of the entity (for logging purposes)
+            sprite_id: ID of the sprite to load hitbox from
             
         Returns:
             Tuple of (width, height, volume), defaults to (1.0, 1.0, 1.0) if not found
         """
-        sprite_id = cls._sprite_id_map.get(entity_name)
-        if sprite_id is None:
-            return cls._default_hitbox
-        
         properties = cls._load_sprite_properties(sprite_id)
         if properties is None:
             return cls._default_hitbox
@@ -106,9 +129,42 @@ class Entity:
             data: Dictionary containing entity properties from TMX
         """
         # Basic identification
-        self.name: str = data.get('name', 'Unknown')
+        self.entity_id: int = data.get('Type', 0)  # Entity ID from TMX
         self.entity_class: str = data.get('class', 'Entity')
-        self.type: int = data.get('Type', 0)
+        
+        # Load entity properties from EntityXXXProperties.yaml
+        entity_props = self._load_entity_properties(self.entity_id)
+        
+        # Set name from entity properties or fall back to TMX name
+        if entity_props:
+            self.name: str = entity_props.get('Name', data.get('name', 'Unknown'))
+            self.sprite_id: int = entity_props.get('SpriteID', 0)
+            self.low_palette: int = entity_props.get('LowPalette', 0)
+            self.high_palette: int = entity_props.get('HighPalette', 0)
+            self.talk_sound_fx: int = entity_props.get('TalkSoundFX', 0)
+            self.is_item: bool = entity_props.get('IsItem', False)
+            self.is_enemy: bool = entity_props.get('IsEnemy', False)
+            
+            # Load enemy properties if this is an enemy
+            if self.is_enemy and 'Enemy' in entity_props:
+                enemy_data = entity_props['Enemy']
+                self.health: int = enemy_data.get('Health', 0)
+                self.defence: int = enemy_data.get('Defence', 0)
+                self.attack: int = enemy_data.get('Attack', 0)
+                self.gold_drop: int = enemy_data.get('GoldDrop', 0)
+                self.item_drop: int = enemy_data.get('ItemDrop', 0)
+                self.drop_probability: int = enemy_data.get('DropProbability', 0)
+        else:
+            # Fall back to TMX data if entity properties not found
+            self.name: str = data.get('name', 'Unknown')
+            self.sprite_id: int = 0
+            self.low_palette: int = 0
+            self.high_palette: int = 0
+            self.talk_sound_fx: int = 0
+            self.is_item: bool = False
+            self.is_enemy: bool = False
+        
+        self.type: int = self.entity_id  # Keep for backward compatibility
         
         # Position (in tile coordinates from TMX)
         self.x: float = data.get('X', 0.0)
@@ -120,9 +176,9 @@ class Entity:
         self._screen_pos: Vector2 = Vector2()
         
         # Physical properties (size in tiles, height in tiles, volume)
-        # Load from YAML, default to (1.0, 1.0, 1.0) if not available
-        hitbox_props = self._get_hitbox_from_yaml(self.name)
-        print(f"Hitbox for {self.name}: {hitbox_props}")
+        # Load from sprite properties using the sprite_id from entity properties
+        hitbox_props = self._get_hitbox_from_yaml(self.entity_id, self.sprite_id)
+        print(f"Hitbox for {self.name} (Entity ID: {self.entity_id}, Sprite ID: {self.sprite_id}): {hitbox_props}")
         
         self.size: float = hitbox_props[0]  # Width and length in tiles
         self.height: float = hitbox_props[1]  # Height in tiles
@@ -373,7 +429,7 @@ class Entity:
         return self.name == 'Raft'
     
     def __repr__(self) -> str:
-        return (f"Entity(name='{self.name}', class='{self.entity_class}', "
-                f"pos=({self.x}, {self.y}, {self.z}), type={self.type}, "
+        return (f"Entity(name='{self.name}', id={self.entity_id}, class='{self.entity_class}', "
+                f"sprite_id={self.sprite_id}, pos=({self.x}, {self.y}, {self.z}), "
                 f"size={self.size}, height={self.height}, volume={self.volume}, "
                 f"behaviour={self.behaviour}, solid={self.solid} visible={self.visible})")
