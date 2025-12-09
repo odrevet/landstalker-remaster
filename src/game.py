@@ -13,8 +13,8 @@ from hero import Hero
 from utils import *
 from room import Room
 from heightmap import Heightmap, HeightmapCell
-from debug import draw_hero_boundbox, draw_heightmap, draw_warps, draw_entities_boundboxes
-from collision import (resolve_entity_collision, get_entity_top_at_position, check_collids_entity, get_entity_hero_is_standing_on,
+from debug import draw_heightmap, draw_warps, draw_boundbox
+from collision import (resolve_entity_collision, get_entity_top_at_position, check_collids_entity, get_entity_hero_is_standing_on, 
                       get_entity_in_front_of_hero, can_place_entity_at_position, get_position_in_front_of_hero, get_touching_entities)
 from script_commands import run_entity_script
 
@@ -963,13 +963,12 @@ class Game:
                             self.camera_x, self.camera_y)
 
             if self.is_boundbox_displayed:
-                draw_hero_boundbox(self.hero, self.surface, self.room.data.tileheight, 
+                draw_boundbox(self.hero.bbox, self.surface, self.room.data.tileheight, 
                                 self.camera_x, self.camera_y, self.room.heightmap.left_offset, 
                                 self.room.heightmap.top_offset)
-                draw_entities_boundboxes(self.room.entities, self.surface, 
-                                        self.room.data.tileheight, self.camera_x, 
-                                        self.camera_y, self.room.heightmap.left_offset, 
-                                        self.room.heightmap.top_offset)
+                for entity in self.room.entities:
+                    draw_boundbox(entity.bbox, self.surface, self.room.data.tileheight, self.camera_x, 
+                                  self.camera_y, self.room.heightmap.left_offset, self.room.heightmap.top_offset)
 
             if self.is_warps_displayed:
                 draw_warps(self.surface, self.room.warps, self.room.heightmap, 

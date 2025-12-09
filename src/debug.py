@@ -1,13 +1,9 @@
 import pygame
-from typing import List
+from typing import List, Tuple, Optional
 from utils import cartesian_to_iso
 from boundingbox import BoundingBox
 
-
-# -------------------------------------------------------------
-#  DRAW HEIGHTMAP
-# -------------------------------------------------------------
-def draw_heightmap(screen, heightmap, tile_height, camera_x, camera_y):
+def draw_heightmap(screen: pygame.Surface, heightmap, tile_height: int, camera_x: float, camera_y: float) -> None:
     """Draw the isometric heightmap with semi-transparent fills and wireframe."""
 
     offset_x = (heightmap.left_offset - 12) * tile_height - 12
@@ -127,11 +123,9 @@ def draw_heightmap(screen, heightmap, tile_height, camera_x, camera_y):
     screen.blit(temp_surface, (0, 0))
 
 
-# -------------------------------------------------------------
-#  DRAW BOUNDING BOX (GENERIC)
-# -------------------------------------------------------------
-def draw_boundbox(bbox: BoundingBox, screen, tile_height, camera_x, camera_y, 
-                  left_offset, top_offset, color=(50, 255, 50)):
+def draw_boundbox(bbox: BoundingBox, screen: pygame.Surface, tile_height: int, 
+                  camera_x: float, camera_y: float, left_offset: int, top_offset: int, 
+                  color: Tuple[int, int, int] = (250, 255, 250)) -> None:
     """Draw an isometric bounding box using BoundingBox object.
     
     Args:
@@ -149,9 +143,8 @@ def draw_boundbox(bbox: BoundingBox, screen, tile_height, camera_x, camera_y,
     corners_iso = bbox.get_corners_iso(tile_height, left_offset, top_offset, camera_x, camera_y)
     
     # Get Z positions for top and bottom of bounding box
-    z_bottom = bbox.world_pos.z - 32
-    z_top = bbox.world_pos.z - bbox.height_in_tiles * tile_height  - 32
-    
+    z_bottom = bbox.world_pos.z
+    z_top = bbox.world_pos.z - bbox.height_in_tiles * tile_height
     # Create points for top rectangle (with Z offset)
     top_points = [
         (corners_iso[0][0], corners_iso[0][1] - z_top),   # left
@@ -178,39 +171,8 @@ def draw_boundbox(bbox: BoundingBox, screen, tile_height, camera_x, camera_y,
     for i in range(4):
         pygame.draw.line(screen, color, top_points[i], bottom_points[i], 1)
 
-# -------------------------------------------------------------
-#  DRAW HERO BOUNDING BOX
-# -------------------------------------------------------------
-def draw_hero_boundbox(hero, screen, tile_height, camera_x, camera_y, left_offset, top_offset):
-    """Draw hero's isometric bounding box."""
-    draw_boundbox(hero.bbox, screen, tile_height, camera_x, camera_y, 
-                  left_offset, top_offset, color=(205, 205, 250))
-
-
-# -------------------------------------------------------------
-#  DRAW ENTITY BOUNDING BOX
-# -------------------------------------------------------------
-def draw_entity_boundbox(entity, screen, tile_height, camera_x, camera_y, left_offset, top_offset):
-    """Draw entity's isometric bounding box."""
-    color = (200, 250, 255)
-    draw_boundbox(entity.bbox, screen, tile_height, camera_x, camera_y, 
-                  left_offset, top_offset, color=color)
-
-
-# -------------------------------------------------------------
-#  DRAW ENTITIES BOUNDING BOXES
-# -------------------------------------------------------------
-def draw_entities_boundboxes(entities: List, screen, tile_height, camera_x, camera_y, 
-                              left_offset, top_offset):
-    """Draw bounding boxes for all entities."""
-    for entity in entities:
-        draw_entity_boundbox(entity, screen, tile_height, camera_x, camera_y, 
-                            left_offset, top_offset)
-
-# -------------------------------------------------------------
-#  DRAW LABEL
-# -------------------------------------------------------------
-def draw_label(label, color, screen, draw_coords=False, draw_size=False):
+def draw_label(label: str, color: Tuple[int, int, int], screen: pygame.Surface, 
+               draw_coords: bool = False, draw_size: bool = False) -> None:
     font = pygame.font.SysFont("Arial", 12)
     text_surf = font.render(label, True, color)
 
@@ -235,17 +197,14 @@ def draw_label(label, color, screen, draw_coords=False, draw_size=False):
         coord_surf = font.render(coord_text, True, color)
         screen.blit(coord_surf, (label_x, label_y + 24))
 
-
-# -------------------------------------------------------------
-#  DRAW WARPS
-# -------------------------------------------------------------
-def draw_warps(screen, warps, heightmap, tile_h, camera_x, camera_y, current_room):
+def draw_warps(screen: pygame.Surface, warps: List, heightmap, tile_h: int, 
+               camera_x: float, camera_y: float, current_room: str) -> None:
     """Draw all warps for debugging"""
     # Precompute offsets
     off_x = (heightmap.left_offset) * tile_h
     off_y = (heightmap.top_offset) * tile_h
     
-    def iso_point(wx, wy, z):
+    def iso_point(wx: float, wy: float, z: float) -> Tuple[float, float]:
         """Convert world Cartesian → isometric pixel coords, accounting for height."""
         ix, iy = cartesian_to_iso(wx - off_x, wy - off_y)
         # Subtract z (height)

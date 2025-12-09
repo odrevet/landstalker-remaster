@@ -213,8 +213,8 @@ class Entity:
         self.type: int = self.entity_id  # Keep for backward compatibility
         
         # Initialize world position directly from TMX coordinates
-        x: float = data.get('X', 0.0) - 12 # hardcoded offsets
-        y: float = data.get('Y', 0.0) - 12 # hardcoded offsets
+        x: float = data.get('X', 0.0)
+        y: float = data.get('Y', 0.0)
         z: float = data.get('Z', 0.0)
         self.world_pos: Vector3 = Vector3(x * tile_h, y * tile_h, z * tile_h)
         
@@ -235,7 +235,10 @@ class Entity:
         self.HEIGHT: int = int(self.height)
         
         # Initialize bounding box for collision detection
-        self.bbox: BoundingBox = BoundingBox(self.world_pos, self.height, self.size)
+        bbox_pos = self.world_pos.copy()
+        bbox_pos.x -= 12 * 16
+        bbox_pos.y -= 12 * 16
+        self.bbox: BoundingBox = BoundingBox(bbox_pos, self.height, self.size)
         
         # Visual properties
         self.palette: int = data.get('Palette', 0)
@@ -376,9 +379,8 @@ class Entity:
             self.image = self.frames[frame_index]
     
     def update_screen_pos(self, heightmap_left_offset: int, heightmap_top_offset: int,
-                         camera_x: float, camera_y: float, tile_h: int) -> None:
+                        camera_x: float, camera_y: float, tile_h: int) -> None:
         """Update screen position based on world position and camera
-        
         Args:
             heightmap_left_offset: Heightmap left offset
             heightmap_top_offset: Heightmap top offset
@@ -386,20 +388,22 @@ class Entity:
             camera_y: Camera Y position
             tile_h: Tile height in pixels
         """
-        offset_x: float = (heightmap_left_offset - 12 + 4) * tile_h
-        offset_y: float = (heightmap_top_offset - 11 + 4) * tile_h
+        offset_x: float = heightmap_left_offset * tile_h
+        offset_y: float = heightmap_top_offset * tile_h
         
-        iso_x: float
-        iso_y: float
+        # Convert world position to isometric coordinates
         iso_x, iso_y = cartesian_to_iso(
             self.world_pos.x - offset_x,
             self.world_pos.y - offset_y
         )
         
-        ENTITY_HEIGHT: int = (self.height + 1) * 16
+        # Calculate entity height offset
+        ENTITY_HEIGHT: int = (self.height) * 16
         
-        self._screen_pos.x = iso_x - 16 - camera_x
-        self._screen_pos.y = iso_y - self.world_pos.z + 12 - camera_y + ENTITY_HEIGHT
+        # Update screen position with camera offset
+        # The Z coordinate should be SUBTRACTED from iso_y to move entities up when they're higher
+        self._screen_pos.x = iso_x - camera_x
+        self._screen_pos.y = iso_y - self.world_pos.z - ENTITY_HEIGHT - camera_y - 8
     
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the entity on the surface
@@ -433,29 +437,11 @@ class Entity:
             Each corner is (x, y) in world coordinates
         """
         return self.bbox.get_corners_world(tile_h)
-    
-    def get_bbox_corners_iso(self, tile_h: int, left_offset: int, top_offset: int, 
-                              camera_x: float, camera_y: float) -> List[Tuple[float, float]]:
-        """Get the four corners of the entity's bounding box in isometric screen coordinates
-        
-        This is useful for debug drawing.
-        
-        Args:
-            tile_h: Tile height in pixels
-            left_offset: Heightmap left offset
-            top_offset: Heightmap top offset
-            camera_x: Camera X position
-            camera_y: Camera Y position
-            
-        Returns:
-            List of 4 corner positions in screen space: [left, bottom, right, top]
-        """
-        return self.bbox.get_corners_iso(tile_h, left_offset, top_offset, camera_x, camera_y)
 
     def set_world_pos(self, x: float, y: float, z: float, 
                      heightmap_left_offset: int, heightmap_top_offset: int, 
                      camera_x: float, camera_y: float) -> None:
-        """Set the hero's world position and update screen position
+        """Set the entity's world position and update screen position
         
         Args:
             x, y, z: World coordinates
@@ -464,8 +450,8 @@ class Entity:
             camera_x: Camera X position
             camera_y: Camera Y position
         """
-        self.world_pos.x = x - 12
-        self.world_pos.y = y - 12
+        self.world_pos.x = x
+        self.world_pos.y = y
         self.world_pos.z = z
         self.update_screen_pos(heightmap_left_offset, heightmap_top_offset, camera_x, camera_y, 16)
 

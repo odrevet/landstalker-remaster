@@ -76,7 +76,7 @@ class BoundingBox:
         """
         offset_x = (left_offset - 12 + 4) * tile_h - 12
         offset_y = (top_offset - 11 + 4) * tile_h - 12
-        
+
         corners_world = self.get_corners_world(tile_h)
         corners_iso = []
         

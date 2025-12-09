@@ -37,7 +37,10 @@ class Hero(pygame.sprite.Sprite):
         self.is_moving: bool = False
 
         # Bounding box for collision detection
-        self.bbox: BoundingBox = BoundingBox(self._world_pos, self.HEIGHT)
+        bbox_vector = self._world_pos.copy()
+        bbox_vector.x += 12 * 16
+        bbox_vector.y += 12 * 16
+        self.bbox: BoundingBox = BoundingBox(bbox_vector, self.HEIGHT)
         
         # Cache for update_screen_pos parameters
         self._heightmap_left_offset: int = 0
@@ -237,34 +240,6 @@ class Hero(pygame.sprite.Sprite):
         top = (x, y)
         
         return (left, bottom, right, top)
-    
-    def get_bbox_corners_iso(self, tile_h: int, left_offset: int, top_offset: int, 
-                              camera_x: float, camera_y: float) -> List[Tuple[float, float]]:
-        """Get the four corners of the hero's bounding box in isometric screen coordinates
-        
-        This is useful for debug drawing.
-        
-        Args:
-            tile_h: Tile height in pixels
-            left_offset: Heightmap left offset
-            top_offset: Heightmap top offset
-            camera_x: Camera X position
-            camera_y: Camera Y position
-            
-        Returns:
-            List of 4 corner positions in screen space: [left, bottom, right, top]
-        """
-        offset_x = (left_offset - 12 + 4) * tile_h - 12
-        offset_y = (top_offset - 11 + 4) * tile_h - 12
-        
-        corners_world = self.get_bbox_corners_world(tile_h)
-        corners_iso = []
-        
-        for wx, wy in corners_world:
-            iso_x, iso_y = cartesian_to_iso(wx - offset_x, wy - offset_y)
-            corners_iso.append((iso_x - camera_x, iso_y - camera_y))
-        
-        return corners_iso
         
     def set_world_pos(self, x: float, y: float, z: float, 
                      heightmap_left_offset: int, heightmap_top_offset: int, 
@@ -282,6 +257,10 @@ class Hero(pygame.sprite.Sprite):
         self._world_pos.y = y
         self._world_pos.z = z
         self._update_screen_pos(heightmap_left_offset, heightmap_top_offset, camera_x, camera_y)
+
+        self.bbox.world_pos = self._world_pos.copy()
+        #self.bbox.world_pos.x += 12 * 16
+        #self.bbox.world_pos.y += 12 * 16
     
     def update_camera(self, heightmap_left_offset: int, heightmap_top_offset: int, 
                      camera_x: float, camera_y: float) -> None:
