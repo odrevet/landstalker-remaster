@@ -36,6 +36,12 @@ Uage examples:
 python src/main.py -r 595
 ```
 
+* Game start location after intro
+
+```
+python3 src/main.py -r 148 -x 320 -y 400 -z 128 --debug
+```
+
 * Load room 240 and set player location, enable debug
 
 ```
