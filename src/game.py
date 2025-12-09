@@ -708,6 +708,8 @@ class Game:
             # Check if action button (A key) was just pressed
             if not self.is_key_just_pressed(pygame.K_a, keys):
                 return
+
+            print('KEY')
             
             # handle pickup/place
             if self.hero.is_grabbing:
@@ -754,33 +756,33 @@ class Game:
                         print("Cannot place entity here - invalid terrain")
                 else:
                     print("Cannot place entity here - out of bounds")
+            else:
+                # Check for entity in front of hero
+                entity = get_entity_in_front_of_hero(
+                    self.hero,
+                    self.room.entities,
+                    tile_h
+                )
 
-            # Check for entity in front of hero
-            entity = get_entity_in_front_of_hero(
-                self.hero,
-                self.room.entities,
-                tile_h
-            )
-
-            if entity is not None: 
-                # handle dialog
-                if entity.has_dialogue == True:
-                    self.show_dialog(entity.dialogue)
-                    return
-                else:
-                    # Try to grab an entity
-                    self.hero.grab_entity(entity)
-                    
-                    # Position entity above hero
-                    self.hero.update_grabbed_entity_position(
-                        self.room.heightmap.left_offset,
-                        self.room.heightmap.top_offset,
-                        self.camera_x,
-                        self.camera_y,
-                        tile_h
-                    )
-                    
-                    print(f"Grabbed entity: {entity.name}")
+                if entity is not None: 
+                    # handle dialog
+                    if entity.has_dialogue == True:
+                        self.show_dialog(entity.dialogue)
+                        return
+                    else:
+                        # Try to grab an entity
+                        self.hero.grab_entity(entity)
+                        
+                        # Position entity above hero
+                        self.hero.update_grabbed_entity_position(
+                            self.room.heightmap.left_offset,
+                            self.room.heightmap.top_offset,
+                            self.camera_x,
+                            self.camera_y,
+                            tile_h
+                        )
+                        
+                        print(f"Grabbed entity: {entity.name}")
     def handle_debug_toggles(self, keys: pygame.key.ScancodeWrapper) -> None:
         """Handle debug flag toggles"""
         if self.debug_mode:
