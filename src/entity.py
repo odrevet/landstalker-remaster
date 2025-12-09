@@ -19,15 +19,6 @@ class Entity:
     # Entity properties cache - loaded from EntityXXXProperties.yaml files
     _entity_properties_cache: ClassVar[Dict[int, Dict[str, Any]]] = {}
     
-    # Sprite mapping: entity_class -> (sprite filename, frame_width, frame_count)
-    _sprite_map: ClassVar[Dict[str, Tuple[str, int, int]]] = {
-        'Crate': ('data/sprites/SpriteGfx091Anim000.png', 32, 1),
-        'Chest': ('data/sprites/SpriteGfx036Anim000.png', 32, 5),
-        'Small Yellow Platform': ('data/sprites/SpriteGfx049Anim000.png', 32, 1),
-        'Large Grey Ball': ('data/sprites/SpriteGfx045Anim000.png', 64, 1),
-        'Raft': ('data/sprites/SpriteGfx092Anim000.png', 64, 1),
-    }
-    
     # Default hitbox values if YAML properties are not available
     _default_hitbox: ClassVar[Tuple[float, float, float]] = (1.0, 1.0, 1.0)
     
@@ -98,11 +89,65 @@ class Entity:
             return None
     
     @classmethod
-    def _get_hitbox_from_yaml(cls, entity_id: int, sprite_id: int) -> Tuple[float, float, float]:
+    def _get_sprite_info(cls, sprite_id: int) -> Optional[Tuple[str, int, int]]:
+        """Get sprite file path, frame width, and frame count from sprite properties
+        
+        Args:
+            sprite_id: The sprite ID to get info for
+            
+        Returns:
+            Tuple of (sprite_file_path, frame_width, frame_count) or None if not found
+        """
+        sprite_props = cls._load_sprite_properties(sprite_id)
+        if sprite_props is None:
+            print(f"  _get_sprite_info: Could not load sprite properties for sprite ID {sprite_id}")
+            return None
+        
+        # Get the label to construct the sprite file path
+        label = sprite_props.get('Label')
+        if label is None:
+            print(f"  _get_sprite_info: No Label found in sprite properties for sprite ID {sprite_id}")
+            return None
+        
+        # Construct sprite file path: data/sprites/SpriteGfxXXXAnim000.png
+        sprite_file = f"data/sprites/{label}Anim000.png"
+        
+        # Get hitbox to determine frame width
+        hitbox = sprite_props.get('Hitbox', {})
+        width = hitbox.get('Width', 1.0)
+        
+        # Calculate frame width in pixels (assuming 16 pixels per tile unit)
+        # Round to nearest power of 2 or common sprite size (32, 64, 128, etc.)
+        frame_width_pixels = int(width * 32)
+        print(f"  _get_sprite_info: Hitbox width={width}, calculated pixels={frame_width_pixels}")
+        if frame_width_pixels <= 32:
+            frame_width = 32
+        elif frame_width_pixels <= 64:
+            frame_width = 64
+        elif frame_width_pixels <= 128:
+            frame_width = 128
+        else:
+            frame_width = 256
+        
+        # Get frame count from animation properties
+        animation = sprite_props.get('Animation', {})
+        idle_frame_count = animation.get('IdleAnimationFrameCount', 0)
+        walk_frame_count = animation.get('WalkCycleFrameCount', 0)
+        
+        # Use the maximum frame count available, default to 1 if both are 0
+        frame_count = max(idle_frame_count, walk_frame_count)
+        if frame_count == 0:
+            frame_count = 1
+            print(f"  _get_sprite_info: No animation frames specified, defaulting to 1")
+        
+        print(f"  _get_sprite_info: label={label}, frame_width={frame_width}, frame_count={frame_count}")
+        return (sprite_file, frame_width, frame_count)
+    
+    @classmethod
+    def _get_hitbox_from_yaml(cls, sprite_id: int) -> Tuple[float, float, float]:
         """Get hitbox properties from YAML file based on sprite ID
         
         Args:
-            entity_id: ID of the entity (for logging purposes)
             sprite_id: ID of the sprite to load hitbox from
             
         Returns:
@@ -177,7 +222,7 @@ class Entity:
         
         # Physical properties (size in tiles, height in tiles, volume)
         # Load from sprite properties using the sprite_id from entity properties
-        hitbox_props = self._get_hitbox_from_yaml(self.entity_id, self.sprite_id)
+        hitbox_props = self._get_hitbox_from_yaml(self.sprite_id)
         print(f"Hitbox for {self.name} (Entity ID: {self.entity_id}, Sprite ID: {self.sprite_id}): {hitbox_props}")
         
         self.size: float = hitbox_props[0]  # Width and length in tiles
@@ -197,8 +242,8 @@ class Entity:
         # Sprite/animation
         self.sprite_sheet: Optional[pygame.Surface] = None  # Full sprite sheet
         self.frames: List[pygame.Surface] = []  # Individual frames
-        self.frame_width: int = 32  # Width of each frame
-        self.frame_count: int = 1  # Number of frames
+        self.frame_width: int = 32  # Width of each frame (will be set by sprite properties)
+        self.frame_count: int = 1  # Number of frames (will be set by sprite properties)
         self.current_frame: int = 0
         self.image: Optional[pygame.Surface] = None  # Current frame to display
         self.sprite_missing: bool = False  # Flag to indicate missing sprite
@@ -231,61 +276,78 @@ class Entity:
         self._load_sprite()
     
     def _load_sprite(self) -> None:
-        """Load sprite for this entity class and extract individual frames"""
-        sprite_info = self._sprite_map.get(self.name)
+        """Load sprite for this entity using sprite ID from entity properties"""
+        print(f"Loading sprite for {self.name} (Entity ID: {self.entity_id}, Sprite ID: {self.sprite_id})")
         
-        if sprite_info:
-            sprite_file, frame_width, frame_count = sprite_info
-            self.frame_width = frame_width
-            self.frame_count = frame_count
-            
-            # Check if already in cache
-            if sprite_file not in Entity._sprite_cache:
-                try:
-                    loaded_sprite = pygame.image.load(sprite_file).convert_alpha()
-                    Entity._sprite_cache[sprite_file] = loaded_sprite
-                    print(f"Loaded sprite sheet for {self.name}: {sprite_file}")
-                except (pygame.error, FileNotFoundError) as e:
-                    print(f"Warning: Could not load sprite {sprite_file}: {e}")
-                    # Mark sprite as missing instead of creating placeholder
-                    self.sprite_missing = True
-                    Entity._sprite_cache[sprite_file] = None
-                    return
-            
-            # Get the sprite sheet from cache
-            self.sprite_sheet = Entity._sprite_cache[sprite_file]
-            
-            # Check if sprite was actually loaded
-            if self.sprite_sheet is None:
-                self.sprite_missing = True
-                return
-            
-            # Extract individual frames from the sprite sheet
-            self._extract_frames()
-            
-        else:
-            # No sprite mapping for this entity class - mark as missing
-            print(f"Warning: No sprite mapping for entity: {self.name}")
+        # Get sprite information from sprite properties
+        sprite_info = self._get_sprite_info(self.sprite_id)
+        
+        if sprite_info is None:
+            print(f"Warning: Could not get sprite info for sprite ID {self.sprite_id} (entity: {self.name})")
             self.sprite_missing = True
+            return
+        
+        sprite_file, frame_width, frame_count = sprite_info
+        self.frame_width = frame_width
+        self.frame_count = frame_count
+        print(f"  Sprite info: file={sprite_file}, frame_width={frame_width}, frame_count={frame_count}")
+        
+        # Check if already in cache
+        if sprite_file not in Entity._sprite_cache:
+            try:
+                loaded_sprite = pygame.image.load(sprite_file).convert_alpha()
+                Entity._sprite_cache[sprite_file] = loaded_sprite
+                print(f"  Loaded sprite sheet: {sprite_file}")
+            except (pygame.error, FileNotFoundError) as e:
+                print(f"  ERROR: Could not load sprite {sprite_file}: {e}")
+                # Mark sprite as missing instead of creating placeholder
+                self.sprite_missing = True
+                Entity._sprite_cache[sprite_file] = None
+                return
+        
+        # Get the sprite sheet from cache
+        self.sprite_sheet = Entity._sprite_cache[sprite_file]
+        
+        # Check if sprite was actually loaded
+        if self.sprite_sheet is None:
+            print(f"  ERROR: Sprite sheet is None in cache for {sprite_file}")
+            self.sprite_missing = True
+            return
+        
+        print(f"  Extracting {frame_count} frames from sprite sheet...")
+        # Extract individual frames from the sprite sheet
+        self._extract_frames()
+        print(f"  Extraction complete. self.image = {self.image}, frames count = {len(self.frames)}")
     
     def _extract_frames(self) -> None:
         """Extract individual frames from the sprite sheet"""
         if self.sprite_sheet is None:
+            print(f"  ERROR in _extract_frames: sprite_sheet is None!")
             return
         
         sprite_height = self.sprite_sheet.get_height()
+        sprite_width = self.sprite_sheet.get_width()
+        print(f"  Sprite sheet dimensions: {sprite_width}x{sprite_height}")
+        print(f"  Extracting {self.frame_count} frames of width {self.frame_width}")
         
         # Extract each frame
         for i in range(self.frame_count):
             x = i * self.frame_width
+            if x + self.frame_width > sprite_width:
+                print(f"  WARNING: Frame {i} extends beyond sprite sheet! x={x}, frame_width={self.frame_width}, sheet_width={sprite_width}")
+                break
             frame = self.sprite_sheet.subsurface(
                 pygame.Rect(x, 0, self.frame_width, sprite_height)
             )
             self.frames.append(frame)
+            print(f"  Extracted frame {i}: {frame}")
         
         # Set initial frame
         if self.frames:
             self.image = self.frames[0]
+            print(f"  Set initial image to frame 0: {self.image}")
+        else:
+            print(f"  ERROR: No frames were extracted!")
     
     def update(self, dt: float) -> None:
         """Update entity animation
@@ -350,7 +412,7 @@ class Entity:
             self.world_pos.y - offset_y
         )
         
-        ENTITY_HEIGHT: int = 32  # Adjust based on sprite
+        ENTITY_HEIGHT: int = (self.height + 1 )* 16
         
         self._screen_pos.x = iso_x - 16 - camera_x
         self._screen_pos.y = iso_y - self.world_pos.z + 12 - camera_y + ENTITY_HEIGHT
