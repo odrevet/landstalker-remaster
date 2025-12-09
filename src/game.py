@@ -105,7 +105,7 @@ class Game:
         # Fade (warp) variables
         self.fade_alpha: int = 0                # 0..255
         self.fade_mode: Optional[str] = None    # "out", "in", or None
-        self.fade_speed: float = 400.0          # alpha units per second
+        self.fade_speed: float = 600.0          # alpha units per second
         self.fade_callback: Optional[Callable[[], None]] = None
         self.fade_surface: pygame.Surface = pygame.Surface((DISPLAY_WIDTH, DISPLAY_HEIGHT))
         self.fade_surface.fill((0, 0, 0))
