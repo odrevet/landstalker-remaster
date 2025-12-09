@@ -350,8 +350,6 @@ class Hero(pygame.sprite.Sprite):
         # Position entity directly above hero (1 tile higher in Z)
         hero_pos = self.get_world_pos()
         entity_z = hero_pos.z + (self.HEIGHT * tile_h)
-        
-        self.grabbed_entity.set_world_pos(tile_h)
         self.grabbed_entity.world_pos = Vector3(hero_pos.x, hero_pos.y, entity_z)
         
         # Update entity's bounding box

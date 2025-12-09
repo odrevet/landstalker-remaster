@@ -116,17 +116,6 @@ class Game:
         self.room.load(self.room_number)
         self.play_room_bgm()
 
-        tile_h = self.room.data.tileheight
-        for entity in self.room.entities:
-            entity.set_world_pos(tile_h)
-            entity.update_screen_pos(
-                self.room.heightmap.left_offset,
-                self.room.heightmap.top_offset,
-                self.camera_x,
-                self.camera_y,
-                tile_h
-            )
-
         # Create hero
         self.hero: Hero = Hero(args.x, args.y, args.z)
         

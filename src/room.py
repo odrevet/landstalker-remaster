@@ -124,19 +124,8 @@ class Room:
                     entity_data.update(entity_obj.properties)
                 
                 # Create Entity object
-                entity = Entity(entity_data)
-                
-                entity.x -= 12  # hardcoded offsets
-                entity.y -= 12
-
-                # Calculate world position
-                entity.set_world_pos(self.data.tileheight)
-                
+                entity = Entity(entity_data, 16)
                 self.entities.append(entity)
-            
-            print(f"Loaded {len(self.entities)} entities:")
-            for entity in self.entities:
-                print(f"  - {entity}")
 
     def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float, hero: Hero) -> None:
         self.background_layer.draw(surface, camera_x, camera_y)
