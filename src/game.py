@@ -1,5 +1,6 @@
 from pygame.math import Vector3
 import sys
+import os
 import argparse
 from typing import List, Tuple, Optional, Callable
 import yaml
@@ -30,7 +31,8 @@ FPS: int = 60
 class Game:
     def __init__(self, args: argparse.Namespace) -> None:
         pygame.init()
-        
+        pygame.mixer.init()
+
         # Display setup
         self.is_fullscreen: bool = args.fullscreen
         if self.is_fullscreen:
@@ -112,7 +114,8 @@ class Game:
         # Load room
         self.room: Room = Room()
         self.room.load(self.room_number)
-        
+        self.play_room_bgm()
+
         tile_h = self.room.data.tileheight
         for entity in self.room.entities:
             entity.set_world_pos(tile_h)
@@ -133,6 +136,22 @@ class Game:
         # Center camera on hero initially
         self.center_camera_on_hero()
     
+    def play_room_bgm(self):
+        bgm_name = self.room.room_properties["RoomBGM"]
+        bgm_path = os.path.join("data", "musics", f"{bgm_name}.mp3")
+
+        if not os.path.isfile(bgm_path):
+            print(f"BGM file not found: {bgm_path}")
+            return
+
+        # Stop current music if any
+        pygame.mixer.music.stop()
+
+        # Load and play
+        pygame.mixer.music.load(bgm_path)
+        pygame.mixer.music.play(-1)  # -1 = loop forever
+        print(f"Playing BGM: {bgm_path}")
+
     def on_entity_collids(self, entity):
         print(f"On entity collids {entity.name} {entity.behaviour}")
         run_entity_script(entity, entity.behaviour)
@@ -333,7 +352,10 @@ class Game:
                     # define warp callback to execute while screen is black
                     def do_warp():
                         self.room_number = target_room
+                        current_bgm = self.room.room_properties["RoomBGM"]
                         self.room.load(self.room_number)
+                        if current_bgm != self.room.room_properties["RoomBGM"]:
+                            self.play_room_bgm()
 
                         dest_tile_x, dest_tile_y = warp.get_destination(self.room_number, self.room.heightmap)
                         dest_cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(dest_tile_x, dest_tile_y)
@@ -371,7 +393,10 @@ class Game:
 
             def do_fall_warp():
                 self.room_number = target
+                current_bgm = self.room.room_properties["RoomBGM"]
                 self.room.load(self.room_number)
+                if current_bgm != self.room.room_properties["RoomBGM"]:
+                    self.play_room_bgm()
                 self.camera_locked = True
                 self.center_camera_on_hero()
 
@@ -798,7 +823,10 @@ class Game:
                 room_changed = True
         
         if room_changed:
+            current_bgm = self.room.room_properties["RoomBGM"]
             self.room.load(self.room_number)
+            if current_bgm != self.room.room_properties["RoomBGM"]:
+                self.play_room_bgm()
             self.camera_locked = True
             self.center_camera_on_hero()
     
