@@ -6,7 +6,7 @@ from boundingbox import BoundingBox, MARGIN
 from entity import Entity
 
 
-class Hero(pygame.sprite.Sprite):
+class Hero:
     def __init__(self, x: float = 0, y: float = 0, z: float = 0) -> None:
         super().__init__()
         
@@ -258,9 +258,7 @@ class Hero(pygame.sprite.Sprite):
         self._world_pos.z = z
         self._update_screen_pos(heightmap_left_offset, heightmap_top_offset, camera_x, camera_y)
 
-        self.bbox.world_pos = self._world_pos.copy()
-        #self.bbox.world_pos.x += 12 * 16
-        #self.bbox.world_pos.y += 12 * 16
+        self.bbox.world_pos = self._world_pos
     
     def update_camera(self, heightmap_left_offset: int, heightmap_top_offset: int, 
                      camera_x: float, camera_y: float) -> None:
