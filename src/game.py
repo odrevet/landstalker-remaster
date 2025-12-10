@@ -111,7 +111,7 @@ class Game:
         self.fade_surface.fill((0, 0, 0))
         self.fade_surface.set_alpha(0)
 
-        # Load room
+        # Load initial room
         self.room: Room = Room()
         self.room.load(self.room_number)
         self.play_room_bgm()
@@ -343,6 +343,7 @@ class Game:
                         self.room_number = target_room
                         current_bgm = self.room.room_properties["RoomBGM"]
                         self.room.load(self.room_number)
+                        self.hero.release_entity()
                         if current_bgm != self.room.room_properties["RoomBGM"]:
                             self.play_room_bgm()
 
@@ -384,6 +385,7 @@ class Game:
                 self.room_number = target
                 current_bgm = self.room.room_properties["RoomBGM"]
                 self.room.load(self.room_number)
+                self.hero.release_entity()
                 if current_bgm != self.room.room_properties["RoomBGM"]:
                     self.play_room_bgm()
                 self.camera_locked = True
@@ -708,8 +710,6 @@ class Game:
             # Check if action button (A key) was just pressed
             if not self.is_key_just_pressed(pygame.K_a, keys):
                 return
-
-            print('KEY')
             
             # handle pickup/place
             if self.hero.is_grabbing:
@@ -764,7 +764,7 @@ class Game:
                     tile_h
                 )
 
-                if entity is not None: 
+                if entity is not None and entity.no_pickup == False: 
                     # handle dialog
                     if entity.has_dialogue == True:
                         self.show_dialog(entity.dialogue)
@@ -794,32 +794,6 @@ class Game:
 
             if self.is_key_just_pressed(pygame.K_F3, keys):
                 self.is_warps_displayed = not self.is_warps_displayed
-    
-    def handle_room_change(self, keys: pygame.key.ScancodeWrapper) -> None:
-        """Handle room changing with CTRL + arrow keys"""
-        if not self.debug_mode:
-            return
-        
-        if not (keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL]):
-            return
-        
-        room_changed: bool = False
-        
-        if self.is_key_just_pressed(pygame.K_RIGHT, keys):
-            self.room_number += 1
-            room_changed = True
-        elif self.is_key_just_pressed(pygame.K_LEFT, keys):
-            if self.room_number > 1:
-                self.room_number -= 1
-                room_changed = True
-        
-        if room_changed:
-            current_bgm = self.room.room_properties["RoomBGM"]
-            self.room.load(self.room_number)
-            if current_bgm != self.room.room_properties["RoomBGM"]:
-                self.play_room_bgm()
-            self.camera_locked = True
-            self.center_camera_on_hero()
     
     def update_hud(self) -> None:
         """Update HUD with debug information"""
@@ -1031,7 +1005,6 @@ class Game:
                 # Normal gameplay controls
                 self.handle_camera_movement(keys)
                 self.handle_debug_toggles(keys)
-                self.handle_room_change(keys)
                 self.apply_gravity()
                 self.handle_hero_movement(keys)
 
