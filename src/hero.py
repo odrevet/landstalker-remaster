@@ -37,10 +37,7 @@ class Hero:
         self.is_moving: bool = False
 
         # Bounding box for collision detection
-        bbox_vector = self._world_pos.copy()
-        bbox_vector.x += 12 * 16
-        bbox_vector.y += 12 * 16
-        self.bbox: BoundingBox = BoundingBox(bbox_vector, self.HEIGHT)
+        self.bbox: BoundingBox = BoundingBox(self._world_pos, self.HEIGHT)
         
         # Cache for update_screen_pos parameters
         self._heightmap_left_offset: int = 0
