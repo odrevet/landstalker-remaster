@@ -318,9 +318,6 @@ class Hero:
             camera_y: Camera Y position
             tile_h: Tile height in pixels
         """
-        if not self.is_grabbing or self.grabbed_entity is None:
-            return
-        
         # Position entity directly above hero (1 tile higher in Z)
         hero_pos = self.get_world_pos()
         entity_z = hero_pos.z + (self.HEIGHT * tile_h)

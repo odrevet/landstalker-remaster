@@ -214,7 +214,9 @@ class Entity:
         
         # Initialize world position directly from TMX coordinates
         x: float = data.get('X', 0.0)
+        x -= 12
         y: float = data.get('Y', 0.0)
+        y -= 12
         z: float = data.get('Z', 0.0)
         self.world_pos: Vector3 = Vector3(x * tile_h, y * tile_h, z * tile_h)
         
@@ -236,8 +238,8 @@ class Entity:
         
         # Initialize bounding box for collision detection
         bbox_pos = self.world_pos.copy()
-        bbox_pos.x -= 12 * 16
-        bbox_pos.y -= 12 * 16
+        #bbox_pos.x -= 12 * 16
+        #bbox_pos.y -= 12 * 16
         self.bbox: BoundingBox = BoundingBox(bbox_pos, self.height, self.size)
         
         # Visual properties
@@ -393,8 +395,8 @@ class Entity:
         
         # Convert world position to isometric coordinates
         iso_x, iso_y = cartesian_to_iso(
-            self.world_pos.x - offset_x,
-            self.world_pos.y - offset_y
+            self.world_pos.x - offset_x + 12 * 16,
+            self.world_pos.y - offset_y + 12 * 16
         )
         
         # Calculate entity height offset
