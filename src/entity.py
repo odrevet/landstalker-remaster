@@ -3,11 +3,12 @@ import pygame
 from pygame.math import Vector2, Vector3
 from boundingbox import BoundingBox
 from utils import cartesian_to_iso
+from drawable import Drawable
 import yaml
 import os
 
 
-class Entity:
+class Entity(Drawable):
     """Represents a game entity (NPC, chest, crate, etc.)"""
     
     # Class-level sprite cache - shared across all instances
@@ -174,6 +175,16 @@ class Entity:
             data: Dictionary containing entity properties from TMX
             tile_h: Tile height in pixels for world position calculation
         """
+        # Initialize world position from TMX coordinates
+        x: float = data.get('X', 0.0)
+        x -= 12
+        y: float = data.get('Y', 0.0)
+        y -= 12
+        z: float = data.get('Z', 0.0)
+        
+        # Call parent constructor with world position
+        super().__init__(x * tile_h, y * tile_h, z * tile_h)
+        
         # Basic identification
         self.entity_id: int = data.get('Type', 0)  # Entity ID from TMX
         self.entity_class: str = data.get('class', 'Entity')
@@ -212,17 +223,6 @@ class Entity:
         
         self.type: int = self.entity_id  # Keep for backward compatibility
         
-        # Initialize world position directly from TMX coordinates
-        x: float = data.get('X', 0.0)
-        x -= 12
-        y: float = data.get('Y', 0.0)
-        y -= 12
-        z: float = data.get('Z', 0.0)
-        self.world_pos: Vector3 = Vector3(x * tile_h, y * tile_h, z * tile_h)
-        
-        # Screen position (calculated later)
-        self._screen_pos: Vector2 = Vector2()
-        
         # Load hitbox from sprite properties using the sprite_id from entity properties
         hitbox_props = self._get_hitbox_from_yaml(self.sprite_id)
         print(f"Hitbox for {self.name} (Entity ID: {self.entity_id}, Sprite ID: {self.sprite_id}): {hitbox_props}")
@@ -237,10 +237,7 @@ class Entity:
         self.HEIGHT: int = int(self.height)
         
         # Initialize bounding box for collision detection
-        bbox_pos = self.world_pos.copy()
-        #bbox_pos.x -= 12 * 16
-        #bbox_pos.y -= 12 * 16
-        self.bbox: BoundingBox = BoundingBox(bbox_pos, self.height, self.size)
+        self.bbox: BoundingBox = BoundingBox(self._world_pos, self.height, self.size)
         
         # Visual properties
         self.palette: int = data.get('Palette', 0)
@@ -252,7 +249,7 @@ class Entity:
         self.frame_width: int = 32  # Width of each frame (will be set by sprite properties)
         self.frame_count: int = 1  # Number of frames (will be set by sprite properties)
         self.current_frame: int = 0
-        self.image: Optional[pygame.Surface] = None  # Current frame to display
+        # image is inherited from Drawable and will be set by _load_sprite
         self.sprite_missing: bool = False  # Flag to indicate missing sprite
         
         # Animation timing
@@ -380,32 +377,58 @@ class Entity:
             self.current_frame = frame_index
             self.image = self.frames[frame_index]
     
-    def update_screen_pos(self, heightmap_left_offset: int, heightmap_top_offset: int,
-                        camera_x: float, camera_y: float, tile_h: int) -> None:
-        """Update screen position based on world position and camera
+    def _update_screen_pos(self, heightmap_left_offset: int, heightmap_top_offset: int,
+                          camera_x: float, camera_y: float) -> None:
+        """Update screen position based on world position and camera (overridden for Entity-specific offset)
+        
         Args:
             heightmap_left_offset: Heightmap left offset
             heightmap_top_offset: Heightmap top offset
             camera_x: Camera X position
             camera_y: Camera Y position
-            tile_h: Tile height in pixels
         """
+        # Cache the parameters
+        self._heightmap_left_offset = heightmap_left_offset
+        self._heightmap_top_offset = heightmap_top_offset
+        self._camera_x = camera_x
+        self._camera_y = camera_y
+        
+        # Note: tile_h is assumed to be 16 for entities
+        tile_h = 16
         offset_x: float = heightmap_left_offset * tile_h
         offset_y: float = heightmap_top_offset * tile_h
         
         # Convert world position to isometric coordinates
         iso_x, iso_y = cartesian_to_iso(
-            self.world_pos.x - offset_x + 12 * 16,
-            self.world_pos.y - offset_y + 12 * 16
+            self._world_pos.x - offset_x + 12 * 16,
+            self._world_pos.y - offset_y + 12 * 16
         )
         
         # Calculate entity height offset
-        ENTITY_HEIGHT: int = (self.height) * 16
+        ENTITY_HEIGHT: int = int(self.height * 16)
         
         # Update screen position with camera offset
         # The Z coordinate should be SUBTRACTED from iso_y to move entities up when they're higher
         self._screen_pos.x = iso_x - camera_x
-        self._screen_pos.y = iso_y - self.world_pos.z - ENTITY_HEIGHT - camera_y - 8
+        self._screen_pos.y = iso_y - self._world_pos.z - ENTITY_HEIGHT - camera_y - 8
+    
+    def set_world_pos(self, x: float, y: float, z: float, 
+                     heightmap_left_offset: int, heightmap_top_offset: int, 
+                     camera_x: float, camera_y: float) -> None:
+        """Set the entity's world position and update screen position
+        
+        Args:
+            x, y, z: World coordinates
+            heightmap_left_offset: Heightmap left offset
+            heightmap_top_offset: Heightmap top offset
+            camera_x: Camera X position
+            camera_y: Camera Y position
+        """
+        # Call parent method to handle position and screen update
+        super().set_world_pos(x, y, z, heightmap_left_offset, heightmap_top_offset, camera_x, camera_y)
+        
+        # Update bounding box
+        self.bbox.world_pos = self._world_pos
     
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the entity on the surface
@@ -440,23 +463,6 @@ class Entity:
         """
         return self.bbox.get_corners_world(tile_h)
 
-    def set_world_pos(self, x: float, y: float, z: float, 
-                     heightmap_left_offset: int, heightmap_top_offset: int, 
-                     camera_x: float, camera_y: float) -> None:
-        """Set the entity's world position and update screen position
-        
-        Args:
-            x, y, z: World coordinates
-            heightmap_left_offset: Heightmap left offset
-            heightmap_top_offset: Heightmap top offset
-            camera_x: Camera X position
-            camera_y: Camera Y position
-        """
-        self.world_pos.x = x
-        self.world_pos.y = y
-        self.world_pos.z = z
-        self.update_screen_pos(heightmap_left_offset, heightmap_top_offset, camera_x, camera_y, 16)
-
     def is_crate(self) -> bool:
         """Check if entity is a crate"""
         return self.entity_class == 'Crate'
@@ -475,6 +481,6 @@ class Entity:
     
     def __repr__(self) -> str:
         return (f"Entity(name='{self.name}', id={self.entity_id}, class='{self.entity_class}', "
-                f"sprite_id={self.sprite_id}, world_pos={self.world_pos}, "
+                f"sprite_id={self.sprite_id}, world_pos={self._world_pos}, "
                 f"hitbox={self.hitbox}, behaviour={self.behaviour}, "
                 f"solid={self.solid}, visible={self.visible})")

@@ -742,9 +742,12 @@ class Game:
                             tile_h
                         ):
                             # Place the entity
-                            self.hero.grabbed_entity.world_pos = Vector3(place_x, place_y, place_z)
+                            #self.hero.grabbed_entity.world_pos = Vector3(place_x, place_y, place_z)
+                            self.hero.grabbed_entity._world_pos.x = place_x
+                            self.hero.grabbed_entity._world_pos.y = place_y
+                            self.hero.grabbed_entity._world_pos.z = place_z
                             if self.hero.grabbed_entity.bbox:
-                                self.hero.grabbed_entity.bbox.update_position(self.hero.grabbed_entity.world_pos)
+                                self.hero.grabbed_entity.bbox.update_position(self.hero.grabbed_entity._world_pos)
                             
                             print(f"Placed entity: {self.hero.grabbed_entity.name} at ({place_tile_x}, {place_tile_y})")
                             
@@ -764,12 +767,12 @@ class Game:
                     tile_h
                 )
 
-                if entity is not None and entity.no_pickup == False: 
+                if entity is not None: 
                     # handle dialog
                     if entity.has_dialogue == True:
                         self.show_dialog(entity.dialogue)
                         return
-                    else:
+                    elif entity.no_pickup == False:
                         # Try to grab an entity
                         self.hero.grab_entity(entity)
                         
@@ -896,12 +899,11 @@ class Game:
         # Prepare entities for drawing (update their screen positions)
         tile_h = self.room.data.tileheight
         for entity in self.room.entities:
-            entity.update_screen_pos(
+            entity._update_screen_pos(
                 self.room.heightmap.left_offset,
                 self.room.heightmap.top_offset,
                 self.camera_x,
-                self.camera_y,
-                tile_h
+                self.camera_y
             )
         
         # Create a list of all drawable objects (entities + hero)
@@ -909,11 +911,11 @@ class Game:
         
         # Add all entities with their sort key
         for entity in self.room.entities:
-            if entity.world_pos is not None:
+            if entity.get_world_pos() is not None:
                 # Sort key: Y + (Z + height)
                 # The top of the object determines draw order in isometric view
                 entity_height = entity.HEIGHT * tile_h  # Entity height in world units
-                sort_key = entity.world_pos.y + entity.world_pos.z + entity_height
+                sort_key = entity.get_world_pos().y + entity.get_world_pos().z + entity_height
                 drawable_objects.append((sort_key, entity))
         
         # Add hero with their sort key

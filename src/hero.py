@@ -1,14 +1,17 @@
 import pygame
 from pygame.math import Vector2, Vector3
-from typing import Tuple, List, Optional, Dict
+from typing import Tuple, List, Optional, Dict, TYPE_CHECKING
 from utils import cartesian_to_iso
 from boundingbox import BoundingBox, MARGIN
-from entity import Entity
+from drawable import Drawable
+
+if TYPE_CHECKING:
+    from entity import Entity
 
 
-class Hero:
+class Hero(Drawable):
     def __init__(self, x: float = 0, y: float = 0, z: float = 0) -> None:
-        super().__init__()
+        super().__init__(x, y, z)
         
         # Animation setup
         self.animations: Dict[str, List[pygame.Surface]] = {}
@@ -23,14 +26,12 @@ class Hero:
         # Set initial image
         self.image: pygame.Surface = self.animations[self.current_animation][0]
         
-        self._world_pos: Vector3 = Vector3(x, y, z)
-        self._screen_pos: Vector2 = Vector2()
         self.HEIGHT: int = 2   # height in tiles
         self.touch_ground: bool = False
         self.is_jumping: bool = False
         self.current_jump: int = 0
         self.is_grabbing: bool = False
-        self.grabbed_entity: Optional[Entity] = None
+        self.grabbed_entity: Optional['Entity'] = None
         self.facing_direction: str = "DOWN"  # Can be: "UP", "DOWN", "LEFT", "RIGHT"
         
         # Movement state
@@ -38,12 +39,6 @@ class Hero:
 
         # Bounding box for collision detection
         self.bbox: BoundingBox = BoundingBox(self._world_pos, self.HEIGHT)
-        
-        # Cache for update_screen_pos parameters
-        self._heightmap_left_offset: int = 0
-        self._heightmap_top_offset: int = 0
-        self._camera_x: float = 0
-        self._camera_y: float = 0
     
     def _load_animations(self) -> None:
         """Load all animation spritesheets and extract frames"""
@@ -200,10 +195,6 @@ class Hero:
             elif dy > 0:
                 self.facing_direction = "DOWN"
     
-    def get_world_pos(self) -> Vector3:
-        """Get the hero's world position"""
-        return self._world_pos
-    
     def get_bounding_box(self, tile_h: int) -> Tuple[float, float, float, float]:
         """Get hero's bounding box in world coordinates with margin applied
         
@@ -250,28 +241,15 @@ class Hero:
             camera_x: Camera X position
             camera_y: Camera Y position
         """
-        self._world_pos.x = x
-        self._world_pos.y = y
-        self._world_pos.z = z
-        self._update_screen_pos(heightmap_left_offset, heightmap_top_offset, camera_x, camera_y)
-
-        self.bbox.world_pos = self._world_pos
-    
-    def update_camera(self, heightmap_left_offset: int, heightmap_top_offset: int, 
-                     camera_x: float, camera_y: float) -> None:
-        """Update screen position when camera moves without changing world position
+        # Call parent method to handle position and screen update
+        super().set_world_pos(x, y, z, heightmap_left_offset, heightmap_top_offset, camera_x, camera_y)
         
-        Args:
-            heightmap_left_offset: Heightmap left offset
-            heightmap_top_offset: Heightmap top offset
-            camera_x: Camera X position
-            camera_y: Camera Y position
-        """
-        self._update_screen_pos(heightmap_left_offset, heightmap_top_offset, camera_x, camera_y)
+        # Update bounding box
+        self.bbox.world_pos = self._world_pos
     
     def _update_screen_pos(self, heightmap_left_offset: int, heightmap_top_offset: int, 
                           camera_x: float, camera_y: float) -> None:
-        """Update screen position based on world position and camera (private)"""
+        """Update screen position based on world position and camera (overridden for Hero-specific offset)"""
         # Cache the parameters for potential future use
         self._heightmap_left_offset = heightmap_left_offset
         self._heightmap_top_offset = heightmap_top_offset
@@ -288,12 +266,8 @@ class Hero:
         
         self._screen_pos.x = iso_x - 16 - camera_x
         self._screen_pos.y = iso_y - self._world_pos.z + 12 - camera_y + HERO_HEIGHT
-    
-    def draw(self, surface: pygame.Surface) -> None:
-        """Draw the hero on the surface"""
-        surface.blit(self.image, self._screen_pos)
 
-    def grab_entity(self, entity: Entity) -> None:
+    def grab_entity(self, entity: 'Entity') -> None:
         """Start grabbing an entity
         
         Args:
@@ -321,8 +295,14 @@ class Hero:
         # Position entity directly above hero (1 tile higher in Z)
         hero_pos = self.get_world_pos()
         entity_z = hero_pos.z + (self.HEIGHT * tile_h)
-        self.grabbed_entity.world_pos = Vector3(hero_pos.x, hero_pos.y, entity_z)
         
-        # Update entity's bounding box
-        if self.grabbed_entity.bbox:
-            self.grabbed_entity.bbox.update_position(self.grabbed_entity.world_pos)
+        # Use set_world_pos to properly update both world and screen positions
+        self.grabbed_entity.set_world_pos(
+            hero_pos.x, 
+            hero_pos.y, 
+            entity_z,
+            left_offset,
+            top_offset,
+            camera_x,
+            camera_y
+        )
