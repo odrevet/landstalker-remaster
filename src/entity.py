@@ -236,7 +236,7 @@ class Entity(Drawable):
         # Height in tiles (entities are 1 tile tall by default, but can be overridden)
         self.HEIGHT: int = int(self.height)
         
-        # Initialize bounding box for collision detection
+        # Initialize bounding box for collision detection (now in base class)
         self.bbox: BoundingBox = BoundingBox(self._world_pos, self.height, self.size)
         
         # Visual properties
@@ -412,24 +412,6 @@ class Entity(Drawable):
         self._screen_pos.x = iso_x - camera_x
         self._screen_pos.y = iso_y - self._world_pos.z - ENTITY_HEIGHT - camera_y - 8
     
-    def set_world_pos(self, x: float, y: float, z: float, 
-                     heightmap_left_offset: int, heightmap_top_offset: int, 
-                     camera_x: float, camera_y: float) -> None:
-        """Set the entity's world position and update screen position
-        
-        Args:
-            x, y, z: World coordinates
-            heightmap_left_offset: Heightmap left offset
-            heightmap_top_offset: Heightmap top offset
-            camera_x: Camera X position
-            camera_y: Camera Y position
-        """
-        # Call parent method to handle position and screen update
-        super().set_world_pos(x, y, z, heightmap_left_offset, heightmap_top_offset, camera_x, camera_y)
-        
-        # Update bounding box
-        self.bbox.world_pos = self._world_pos
-    
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the entity on the surface
         
@@ -439,29 +421,6 @@ class Entity(Drawable):
         # Only draw sprite if it exists and is visible
         if self.image and self.visible and not self.sprite_missing:
             surface.blit(self.image, self._screen_pos)
-    
-    def get_bounding_box(self, tile_h: int) -> Tuple[float, float, float, float]:
-        """Get entity's bounding box in world coordinates with margin applied
-        
-        Args:
-            tile_h: Tile height in pixels
-            
-        Returns:
-            Tuple of (x, y, width, height) in world coordinates
-        """
-        return self.bbox.get_bounding_box(tile_h)
-    
-    def get_bbox_corners_world(self, tile_h: int) -> Tuple[Tuple[float, float], ...]:
-        """Get the four corners of the entity's bounding box in world coordinates
-        
-        Args:
-            tile_h: Tile height in pixels
-            
-        Returns:
-            Tuple of 4 corner positions: (left, bottom, right, top)
-            Each corner is (x, y) in world coordinates
-        """
-        return self.bbox.get_corners_world(tile_h)
 
     def is_crate(self) -> bool:
         """Check if entity is a crate"""

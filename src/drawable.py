@@ -1,6 +1,10 @@
 import pygame
 from pygame.math import Vector2, Vector3
+from typing import Tuple, TYPE_CHECKING
 from utils import cartesian_to_iso
+
+if TYPE_CHECKING:
+    from boundingbox import BoundingBox
 
 
 class Drawable:
@@ -25,6 +29,9 @@ class Drawable:
         
         # Image to be set by subclass
         self.image: pygame.Surface = None
+        
+        # Bounding box - to be initialized by subclass
+        self.bbox: 'BoundingBox' = None
     
     def get_world_pos(self) -> Vector3:
         """Get the object's world position
@@ -52,6 +59,10 @@ class Drawable:
         self._world_pos.y = y
         self._world_pos.z = z
         self._update_screen_pos(heightmap_left_offset, heightmap_top_offset, camera_x, camera_y)
+        
+        # Update bounding box if it exists
+        if self.bbox is not None:
+            self.bbox.world_pos = self._world_pos
     
     def update_camera(self, heightmap_left_offset: int, heightmap_top_offset: int, 
                      camera_x: float, camera_y: float) -> None:
@@ -100,6 +111,33 @@ class Drawable:
             Vector2 containing screen x, y coordinates
         """
         return self._screen_pos
+    
+    def get_bounding_box(self, tile_h: int) -> Tuple[float, float, float, float]:
+        """Get object's bounding box in world coordinates with margin applied
+        
+        Args:
+            tile_h: Tile height in pixels
+            
+        Returns:
+            Tuple of (x, y, width, height) in world coordinates
+        """
+        if self.bbox is not None:
+            return self.bbox.get_bounding_box(tile_h)
+        return (0, 0, 0, 0)
+    
+    def get_bbox_corners_world(self, tile_h: int) -> Tuple[Tuple[float, float], ...]:
+        """Get the four corners of the object's bounding box in world coordinates
+        
+        Args:
+            tile_h: Tile height in pixels
+            
+        Returns:
+            Tuple of 4 corner positions: (left, bottom, right, top)
+            Each corner is (x, y) in world coordinates
+        """
+        if self.bbox is not None:
+            return self.bbox.get_corners_world(tile_h)
+        return ((0, 0), (0, 0), (0, 0), (0, 0))
     
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the object on the surface
