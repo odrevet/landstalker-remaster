@@ -1,7 +1,7 @@
 import pygame
 from typing import List, Tuple, Dict, Any, Optional
 
-from pytmx.util_pygame import load_pygame, TiledMap
+from pytmx.util_pygame import load_pygame
 from pygame.math import Vector2
 
 from hero import Hero
@@ -9,6 +9,9 @@ from utils import cartesian_to_iso, iso_to_cartesian
 from warp import Warp
 from entity import Entity
 from heightmap import Heightmap
+
+DRAWING_HEIGHT: int = 224
+DRAWING_WIDTH: int = 320
 
 class Tile:
     def __init__(self, offset: Tuple[int, int]) -> None:
@@ -34,10 +37,10 @@ class Blockset:
 
     def draw(self, surface: pygame.Surface, layer_offset_h: float, 
              camera_x: float, camera_y: float) -> None:
-        if self.screen_pos.x - camera_x + layer_offset_h > -16 and \
-           self.screen_pos.y - camera_y > -16 and \
-           self.screen_pos.x - camera_x + layer_offset_h < 448 and \
-           self.screen_pos.y - camera_y < 320:
+        if self.screen_pos.x - camera_x + layer_offset_h + 16 > 0 and \
+           self.screen_pos.y - camera_y + layer_offset_h + 16 > 0 and \
+           self.screen_pos.x - camera_x < DRAWING_WIDTH and \
+           self.screen_pos.y - camera_y < DRAWING_HEIGHT:
             for tile in self.tiles:
                 tile.draw(surface, self.screen_pos, layer_offset_h, camera_x, camera_y)
 
@@ -129,18 +132,8 @@ class Room:
 
     def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float, hero: Hero) -> None:
         self.background_layer.draw(surface, camera_x, camera_y)
+        self.foreground_layer.draw(surface, camera_x, camera_y)
 
-        for blockset in self.foreground_layer.blocksets:
-            for tile in blockset.tiles:
-                if tile.has_priority == False:
-                    tile.draw(surface, blockset.screen_pos, self.foreground_layer.data.offsetx, camera_x, camera_y)
-
-        #hero.draw(surface)
-        
-        for blockset in self.background_layer.blocksets:
-            for tile in blockset.tiles:
-                if tile.has_priority == True:
-                    tile.draw(surface, blockset.screen_pos, self.background_layer.data.offsetx, camera_x, camera_y)
 
     def populate_layer(self, layer: Layer) -> None:
         for y in range(layer.data.height):
