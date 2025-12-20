@@ -1,6 +1,6 @@
 import pygame
 from pygame.math import Vector2, Vector3
-from typing import Tuple, TYPE_CHECKING
+from typing import Tuple, List, Dict, TYPE_CHECKING
 from utils import cartesian_to_iso
 
 if TYPE_CHECKING:
@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 class Drawable:
-    """Base class for drawable game objects with position management"""
+    """Base class for drawable game objects with position management and animation support"""
     
     def __init__(self, x: float = 0, y: float = 0, z: float = 0) -> None:
         """Initialize drawable object with world position
@@ -32,6 +32,13 @@ class Drawable:
         
         # Bounding box - to be initialized by subclass
         self.bbox: 'BoundingBox' = None
+        
+        # Animation support
+        self.animations: Dict[str, List[pygame.Surface]] = {}
+        self.current_animation: str = ""
+        self.current_frame: int = 0
+        self.animation_speed: float = 0.15  # Default animation speed
+        self.animation_timer: float = 0.0
     
     def get_world_pos(self) -> Vector3:
         """Get the object's world position
@@ -138,6 +145,78 @@ class Drawable:
         if self.bbox is not None:
             return self.bbox.get_corners_world(tile_h)
         return ((0, 0), (0, 0), (0, 0), (0, 0))
+    
+    def extract_frames(self, spritesheet: pygame.Surface, frame_width: int, 
+                      frame_height: int, num_frames: int) -> List[pygame.Surface]:
+        """Extract individual frames from a spritesheet
+        
+        Args:
+            spritesheet: The sprite sheet surface
+            frame_width: Width of each frame
+            frame_height: Height of each frame
+            num_frames: Number of frames to extract
+            
+        Returns:
+            List of frame surfaces
+        """
+        frames = []
+        for i in range(num_frames):
+            frame = pygame.Surface((frame_width, frame_height), pygame.SRCALPHA)
+            frame.blit(spritesheet, (0, 0), (i * frame_width, 0, frame_width, frame_height))
+            frames.append(frame)
+        return frames
+    
+    def set_animation(self, animation_name: str) -> None:
+        """Set the current animation
+        
+        Args:
+            animation_name: Name of the animation to play
+        """
+        if animation_name in self.animations and animation_name != self.current_animation:
+            self.current_animation = animation_name
+            self.current_frame = 0
+            self.animation_timer = 0.0
+    
+    def update_animation_frame(self, advance: bool = True) -> None:
+        """Update the current animation frame
+        
+        Args:
+            advance: Whether to advance the frame based on timer (True) or keep current frame (False)
+        """
+        if not self.current_animation or self.current_animation not in self.animations:
+            return
+        
+        frames = self.animations[self.current_animation]
+        
+        if len(frames) <= 1:
+            # Single frame animation
+            if frames:
+                self.image = frames[0]
+            return
+        
+        if advance:
+            # Multi-frame animation - advance based on timer
+            self.animation_timer += self.animation_speed
+            if self.animation_timer >= 1.0:
+                self.animation_timer = 0.0
+                self.current_frame = (self.current_frame + 1) % len(frames)
+        
+        # Update image to current frame
+        self.image = frames[self.current_frame]
+    
+    def set_animation_frame(self, frame_index: int) -> None:
+        """Set a specific animation frame manually
+        
+        Args:
+            frame_index: Index of the frame to display
+        """
+        if not self.current_animation or self.current_animation not in self.animations:
+            return
+        
+        frames = self.animations[self.current_animation]
+        if 0 <= frame_index < len(frames):
+            self.current_frame = frame_index
+            self.image = frames[frame_index]
     
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the object on the surface

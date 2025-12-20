@@ -236,25 +236,21 @@ class Entity(Drawable):
         # Height in tiles (entities are 1 tile tall by default, but can be overridden)
         self.HEIGHT: int = int(self.height)
         
-        # Initialize bounding box for collision detection (now in base class)
+        # Initialize bounding box for collision detection
         self.bbox: BoundingBox = BoundingBox(self._world_pos, self.height, self.size)
         
         # Visual properties
         self.palette: int = data.get('Palette', 0)
         self.orientation: str = data.get('Orientation', 'NE')
         
-        # Sprite/animation
+        # Sprite/animation (using base class animation support)
         self.sprite_sheet: Optional[pygame.Surface] = None  # Full sprite sheet
-        self.frames: List[pygame.Surface] = []  # Individual frames
         self.frame_width: int = 32  # Width of each frame (will be set by sprite properties)
         self.frame_count: int = 1  # Number of frames (will be set by sprite properties)
-        self.current_frame: int = 0
-        # image is inherited from Drawable and will be set by _load_sprite
         self.sprite_missing: bool = False  # Flag to indicate missing sprite
         
-        # Animation timing
-        self.animation_speed: float = 0.1  # Seconds per frame
-        self.animation_timer: float = 0.0
+        # Animation timing (Entity-specific speed)
+        self.animation_speed = 0.1  # Seconds per frame
         
         # Behavior properties
         self.behaviour: int = data.get('Behaviour', 0)
@@ -319,35 +315,17 @@ class Entity(Drawable):
             return
         
         print(f"  Extracting {frame_count} frames from sprite sheet...")
-        # Extract individual frames from the sprite sheet
-        self._extract_frames()
-        print(f"  Extraction complete. self.image = {self.image}, frames count = {len(self.frames)}")
-    
-    def _extract_frames(self) -> None:
-        """Extract individual frames from the sprite sheet"""
-        if self.sprite_sheet is None:
-            print(f"  ERROR in _extract_frames: sprite_sheet is None!")
-            return
         
+        # Extract frames using base class method
         sprite_height = self.sprite_sheet.get_height()
-        sprite_width = self.sprite_sheet.get_width()
-        print(f"  Sprite sheet dimensions: {sprite_width}x{sprite_height}")
-        print(f"  Extracting {self.frame_count} frames of width {self.frame_width}")
+        self.frames = self.extract_frames(self.sprite_sheet, frame_width, sprite_height, frame_count)
         
-        # Extract each frame
-        for i in range(self.frame_count):
-            x = i * self.frame_width
-            if x + self.frame_width > sprite_width:
-                print(f"  WARNING: Frame {i} extends beyond sprite sheet! x={x}, frame_width={self.frame_width}, sheet_width={sprite_width}")
-                break
-            frame = self.sprite_sheet.subsurface(
-                pygame.Rect(x, 0, self.frame_width, sprite_height)
-            )
-            self.frames.append(frame)
-            print(f"  Extracted frame {i}: {frame}")
+        # Store frames in animation dictionary (using "idle" as default animation)
+        self.animations["idle"] = self.frames
         
-        # Set initial frame
+        # Set initial animation
         if self.frames:
+            self.current_animation = "idle"
             self.image = self.frames[0]
             print(f"  Set initial image to frame 0: {self.image}")
         else:
@@ -359,23 +337,9 @@ class Entity(Drawable):
         Args:
             dt: Delta time in seconds
         """
+        # Use base class animation frame update
         if len(self.frames) > 1:
-            self.animation_timer += dt
-            
-            if self.animation_timer >= self.animation_speed:
-                self.animation_timer = 0.0
-                self.current_frame = (self.current_frame + 1) % len(self.frames)
-                self.image = self.frames[self.current_frame]
-    
-    def set_frame(self, frame_index: int) -> None:
-        """Set a specific frame manually
-        
-        Args:
-            frame_index: Index of the frame to display
-        """
-        if 0 <= frame_index < len(self.frames):
-            self.current_frame = frame_index
-            self.image = self.frames[frame_index]
+            self.update_animation_frame(advance=True)
     
     def _update_screen_pos(self, heightmap_left_offset: int, heightmap_top_offset: int,
                           camera_x: float, camera_y: float) -> None:

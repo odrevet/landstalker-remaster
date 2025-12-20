@@ -1,6 +1,5 @@
 import pygame
-from pygame.math import Vector2, Vector3
-from typing import Tuple, List, Optional, Dict, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 from utils import cartesian_to_iso
 from boundingbox import BoundingBox
 from drawable import Drawable
@@ -11,6 +10,10 @@ if TYPE_CHECKING:
 
 class Hero(Drawable):
     """Represents the player character with animation, movement, and interaction capabilities"""
+    
+    # Animation constants
+    ANIMATION_SPEED = 0.15  # Frames per game tick
+    JUMP_PEAK = 12  # Frame at which jump transitions from ascending to descending
     
     def __init__(self, x: float = 0, y: float = 0, z: float = 0) -> None:
         """Initialize the hero at given world coordinates
@@ -25,100 +28,76 @@ class Hero(Drawable):
         # Physical properties
         self.HEIGHT: int = 2   # Height in tiles
         
-        # Animation setup
-        self.animations: Dict[str, List[pygame.Surface]] = {}
-        self.current_animation: str = "idle_front"
-        self.current_frame: int = 0
-        self.animation_speed: float = 0.15  # Frames per game tick
-        self.animation_timer: float = 0.0
+        # Set animation speed
+        self.animation_speed = self.ANIMATION_SPEED
         
-        # Load all animations
+        # Load all hero animations
         self._load_animations()
         
-        # Set initial image
-        self.image: pygame.Surface = self.animations[self.current_animation][0]
+        # Set initial animation state
+        self.current_animation = "idle_front"
+        self.set_animation("idle_front")
         
-        # Movement and state
+        # Movement state
         self.touch_ground: bool = False
         self.is_jumping: bool = False
         self.current_jump: int = 0
         self.is_moving: bool = False
-        self.facing_direction: str = "DOWN"  # Can be: "UP", "DOWN", "LEFT", "RIGHT"
+        self.facing_direction: str = "DOWN"  # UP, DOWN, LEFT, RIGHT
         
         # Interaction state
         self.is_grabbing: bool = False
         self.grabbed_entity: Optional['Entity'] = None
         
-        # Bounding box for collision detection
+        # Collision detection
         self.bbox: BoundingBox = BoundingBox(self._world_pos, self.HEIGHT)
     
     def _load_animations(self) -> None:
-        """Load all animation spritesheets and extract frames"""
+        """Load all hero animation spritesheets and extract frames"""
+        animation_config = [
+            # (animation_name, file_path, frame_width, frame_height, num_frames)
+            ("idle_back", "data/sprites/SpriteGfx000Anim000.png", 32, 48, 1),
+            ("idle_front", "data/sprites/SpriteGfx000Anim001.png", 32, 48, 1),
+            ("walk_back", "data/sprites/SpriteGfx000Anim002.png", 32, 48, 8),
+            ("walk_front", "data/sprites/SpriteGfx000Anim003.png", 32, 48, 8),
+            ("jump_back", "data/sprites/SpriteGfx000Anim008.png", 32, 48, 2),
+            ("jump_front", "data/sprites/SpriteGfx000Anim009.png", 32, 48, 2),
+        ]
+        
         try:
-            # Idle animations (32x48 - single frame)
-            idle_back = pygame.image.load('data/sprites/SpriteGfx000Anim000.png').convert_alpha()
-            idle_front = pygame.image.load('data/sprites/SpriteGfx000Anim001.png').convert_alpha()
+            # Load each animation
+            for anim_name, file_path, width, height, frames in animation_config:
+                sheet = pygame.image.load(file_path).convert_alpha()
+                self.animations[anim_name] = self.extract_frames(sheet, width, height, frames)
             
-            self.animations["idle_back"] = [idle_back]
-            self.animations["idle_front"] = [idle_front]
-            
-            # Walk animations (256x48 - 8 frames of 32x48 each)
-            walk_back_sheet = pygame.image.load('data/sprites/SpriteGfx000Anim002.png').convert_alpha()
-            walk_front_sheet = pygame.image.load('data/sprites/SpriteGfx000Anim003.png').convert_alpha()
-            
-            self.animations["walk_back"] = self._extract_frames(walk_back_sheet, 32, 48, 8)
-            self.animations["walk_front"] = self._extract_frames(walk_front_sheet, 32, 48, 8)
-            
-            # Jump animations (64x48 - 2 frames of 32x48 each)
-            jump_back_sheet = pygame.image.load('data/sprites/SpriteGfx000Anim008.png').convert_alpha()
-            jump_front_sheet = pygame.image.load('data/sprites/SpriteGfx000Anim009.png').convert_alpha()
-            
-            self.animations["jump_back"] = self._extract_frames(jump_back_sheet, 32, 48, 2)
-            self.animations["jump_front"] = self._extract_frames(jump_front_sheet, 32, 48, 2)
-            
-            # Left/right animations (use back/front as base, will be flipped)
-            self.animations["idle_left"] = [idle_back]
-            self.animations["idle_right"] = [idle_back]
+            # Create left/right animations as references (will be flipped during rendering)
+            self.animations["idle_left"] = self.animations["idle_back"]
+            self.animations["idle_right"] = self.animations["idle_back"]
             self.animations["walk_left"] = self.animations["walk_back"]
             self.animations["walk_right"] = self.animations["walk_front"]
             self.animations["jump_left"] = self.animations["jump_back"]
             self.animations["jump_right"] = self.animations["jump_front"]
             
         except (pygame.error, FileNotFoundError) as e:
-            print(f"Warning: Could not load animation sprites: {e}")
-            # Create placeholder
-            placeholder = pygame.Surface((32, 48), pygame.SRCALPHA)
-            placeholder.fill((255, 0, 255, 128))
-            
-            # Initialize all animations with placeholder
-            for anim_name in ["idle_front", "idle_back", "idle_left", "idle_right"]:
-                self.animations[anim_name] = [placeholder]
-            
-            for anim_name in ["walk_front", "walk_back", "walk_left", "walk_right"]:
-                self.animations[anim_name] = [placeholder] * 8
-            
-            for anim_name in ["jump_front", "jump_back", "jump_left", "jump_right"]:
-                self.animations[anim_name] = [placeholder] * 2
+            print(f"Warning: Could not load hero animation sprites: {e}")
+            self._create_placeholder_animations()
     
-    def _extract_frames(self, spritesheet: pygame.Surface, frame_width: int, 
-                       frame_height: int, num_frames: int) -> List[pygame.Surface]:
-        """Extract individual frames from a spritesheet
+    def _create_placeholder_animations(self) -> None:
+        """Create placeholder animations when sprite files are missing"""
+        placeholder = pygame.Surface((32, 48), pygame.SRCALPHA)
+        placeholder.fill((255, 0, 255, 128))  # Magenta placeholder
         
-        Args:
-            spritesheet: The sprite sheet surface
-            frame_width: Width of each frame
-            frame_height: Height of each frame
-            num_frames: Number of frames to extract
-            
-        Returns:
-            List of frame surfaces
-        """
-        frames = []
-        for i in range(num_frames):
-            frame = pygame.Surface((frame_width, frame_height), pygame.SRCALPHA)
-            frame.blit(spritesheet, (0, 0), (i * frame_width, 0, frame_width, frame_height))
-            frames.append(frame)
-        return frames
+        # Single frame animations
+        for anim_name in ["idle_front", "idle_back", "idle_left", "idle_right"]:
+            self.animations[anim_name] = [placeholder.copy()]
+        
+        # Multi-frame walk animations
+        for anim_name in ["walk_front", "walk_back", "walk_left", "walk_right"]:
+            self.animations[anim_name] = [placeholder.copy() for _ in range(8)]
+        
+        # Jump animations
+        for anim_name in ["jump_front", "jump_back", "jump_left", "jump_right"]:
+            self.animations[anim_name] = [placeholder.copy() for _ in range(2)]
     
     def update_animation(self, is_moving: bool) -> None:
         """Update the current animation based on movement state and direction
@@ -128,73 +107,68 @@ class Hero(Drawable):
         """
         self.is_moving = is_moving
         
-        # Determine which animation to play based on priority: jumping > moving > idle
-        new_animation = self._select_animation(is_moving)
+        # Select and set appropriate animation
+        animation_name = self._get_animation_name()
+        self.set_animation(animation_name)
         
-        # Reset frame if animation changed
-        if new_animation != self.current_animation:
-            self.current_animation = new_animation
-            self.current_frame = 0
-            self.animation_timer = 0.0
+        # Update the frame index
+        self._update_frame_index(is_moving)
         
-        # Update animation frame
-        self._update_animation_frame(is_moving)
-        
-        # Update current image
-        self._update_image()
+        # Apply horizontal mirroring if needed
+        self._apply_direction_mirroring()
     
-    def _select_animation(self, is_moving: bool) -> str:
-        """Select the appropriate animation based on current state
+    def _get_animation_name(self) -> str:
+        """Determine which animation to play based on current state
         
-        Args:
-            is_moving: Whether the hero is moving
-            
         Returns:
             Name of the animation to play
         """
-        # Animation priority: jumping > moving > idle
+        # Priority: jumping > walking > idle
         if self.is_jumping:
-            prefix = "jump"
-        elif is_moving:
-            prefix = "walk"
+            state = "jump"
+        elif self.is_moving:
+            state = "walk"
         else:
-            prefix = "idle"
+            state = "idle"
         
-        # Direction mapping
-        if self.facing_direction == "UP":
-            suffix = "back"
-        elif self.facing_direction == "DOWN" or self.facing_direction == "RIGHT":
-            suffix = "front"
-        elif self.facing_direction == "LEFT":
-            suffix = "left"
-        else:
-            suffix = "front"
+        # Determine direction suffix
+        direction_map = {
+            "UP": "back",
+            "DOWN": "front",
+            "LEFT": "left",
+            "RIGHT": "front",  # Uses front animation, flipped during rendering
+        }
         
-        return f"{prefix}_{suffix}"
+        direction = direction_map.get(self.facing_direction, "front")
+        return f"{state}_{direction}"
     
-    def _update_animation_frame(self, is_moving: bool) -> None:
-        """Update the current animation frame based on state
+    def _update_frame_index(self, is_moving: bool) -> None:
+        """Update the current frame index based on animation state
         
         Args:
-            is_moving: Whether the hero is moving
+            is_moving: Whether the hero is currently moving
         """
         if self.is_jumping:
-            # For jump: frame 0 = ascending, frame 1 = descending
-            jump_peak = 12  # Half of HERO_MAX_JUMP (24 / 2)
-            self.current_frame = 0 if self.current_jump < jump_peak else 1
-        elif is_moving or len(self.animations[self.current_animation]) == 1:
-            # For walk animations, advance frame based on timer
-            self.animation_timer += self.animation_speed
-            if self.animation_timer >= 1.0:
-                self.animation_timer = 0.0
-                num_frames = len(self.animations[self.current_animation])
-                self.current_frame = (self.current_frame + 1) % num_frames
+            # Jump animation: frame 0 = ascending, frame 1 = descending
+            frame_index = 0 if self.current_jump < self.JUMP_PEAK else 1
+            self.set_animation_frame(frame_index)
+        else:
+            # Walk/idle animations advance automatically
+            should_advance = is_moving or len(self.animations[self.current_animation]) == 1
+            self.update_animation_frame(advance=should_advance)
     
-    def _update_image(self) -> None:
-        """Update the current image based on animation frame and facing direction"""
-        base_image = self.animations[self.current_animation][self.current_frame]
+    def _apply_direction_mirroring(self) -> None:
+        """Apply horizontal mirroring to the image based on facing direction"""
+        if not self.current_animation or self.current_animation not in self.animations:
+            return
         
-        # Mirror image when facing left or right
+        frames = self.animations[self.current_animation]
+        if not frames or self.current_frame >= len(frames):
+            return
+        
+        base_image = frames[self.current_frame]
+        
+        # Mirror horizontally for left and right directions
         if self.facing_direction in ("LEFT", "RIGHT"):
             self.image = pygame.transform.flip(base_image, True, False)
         else:
@@ -207,11 +181,11 @@ class Hero(Drawable):
             dx: Change in X position
             dy: Change in Y position
         """
-        # Only update if there's actual movement
+        # No update if there's no movement
         if dx == 0 and dy == 0:
             return
         
-        # Priority: favor the axis with larger movement
+        # Prioritize the axis with larger absolute movement
         if abs(dx) > abs(dy):
             self.facing_direction = "LEFT" if dx < 0 else "RIGHT"
         else:
@@ -221,7 +195,7 @@ class Hero(Drawable):
                           camera_x: float, camera_y: float) -> None:
         """Update screen position based on world position and camera
         
-        Overridden from Drawable to apply Hero-specific positioning
+        Overridden to apply Hero-specific isometric positioning
         
         Args:
             heightmap_left_offset: Heightmap left offset
@@ -235,20 +209,19 @@ class Hero(Drawable):
         self._camera_x = camera_x
         self._camera_y = camera_y
         
-        # Calculate offset
-        offset_x: float = (heightmap_left_offset - 12 + 4) * 16
-        offset_y: float = (heightmap_top_offset - 11 + 4) * 16
+        # Calculate world-to-screen offset
+        offset_x = (heightmap_left_offset - 12 + 4) * 16
+        offset_y = (heightmap_top_offset - 11 + 4) * 16
         
-        # Convert to isometric coordinates
+        # Convert to isometric screen coordinates
         iso_x, iso_y = cartesian_to_iso(
             self._world_pos.x - offset_x, 
             self._world_pos.y - offset_y
         )
         
-        # Apply hero-specific positioning
-        HERO_HEIGHT: int = 32
+        # Apply hero sprite positioning (32 pixels tall)
         self._screen_pos.x = iso_x - 16 - camera_x
-        self._screen_pos.y = iso_y - self._world_pos.z + 12 - camera_y + HERO_HEIGHT
+        self._screen_pos.y = iso_y - self._world_pos.z + 12 - camera_y + 32
     
     def grab_entity(self, entity: 'Entity') -> None:
         """Start grabbing an entity
@@ -264,6 +237,14 @@ class Hero(Drawable):
         self.is_grabbing = False
         self.grabbed_entity = None
     
+    def has_grabbed_entity(self) -> bool:
+        """Check if hero is currently grabbing an entity
+        
+        Returns:
+            True if an entity is grabbed, False otherwise
+        """
+        return self.is_grabbing and self.grabbed_entity is not None
+    
     def update_grabbed_entity_position(self, left_offset: int, top_offset: int, 
                                       camera_x: float, camera_y: float, tile_h: int) -> None:
         """Update the position of the grabbed entity to be above the hero
@@ -275,14 +256,14 @@ class Hero(Drawable):
             camera_y: Camera Y position
             tile_h: Tile height in pixels
         """
-        if self.grabbed_entity is None:
+        if not self.has_grabbed_entity():
             return
         
         # Position entity directly above hero (HEIGHT tiles higher in Z)
         hero_pos = self.get_world_pos()
         entity_z = hero_pos.z + (self.HEIGHT * tile_h)
         
-        # Update entity position
+        # Update entity world and screen position
         self.grabbed_entity.set_world_pos(
             hero_pos.x, 
             hero_pos.y, 
@@ -294,7 +275,19 @@ class Hero(Drawable):
         )
     
     def __repr__(self) -> str:
-        """String representation of the Hero"""
-        return (f"Hero(pos={self._world_pos}, facing={self.facing_direction}, "
-                f"jumping={self.is_jumping}, moving={self.is_moving}, "
-                f"grabbing={self.is_grabbing})")
+        """String representation of the Hero for debugging
+        
+        Returns:
+            Detailed string representation of hero state
+        """
+        return (
+            f"Hero("
+            f"pos={self._world_pos}, "
+            f"facing={self.facing_direction}, "
+            f"animation={self.current_animation}, "
+            f"frame={self.current_frame}, "
+            f"jumping={self.is_jumping}, "
+            f"moving={self.is_moving}, "
+            f"grabbing={self.is_grabbing}"
+            f")"
+        )
