@@ -588,7 +588,7 @@ class Game:
                 new_right_x: int = int((corners[2][0] + HERO_SPEED) // tile_h)
                 new_right_y: int = int(corners[2][1] // tile_h)
                 new_bottom_x: int = int((corners[1][0] + HERO_SPEED) // tile_h)
-                new_bottom_y: int = int((corners[1][1] + HERO_SPEED) // tile_h)
+                new_bottom_y: int = int((corners[1][1]) // tile_h)
                 
                 if new_right_x < self.room.heightmap.get_width() and self.can_move_to(
                     next_x, hero_pos.y, [(new_right_x, new_right_y), (new_bottom_x, new_bottom_y)]
