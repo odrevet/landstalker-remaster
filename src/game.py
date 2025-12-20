@@ -723,6 +723,9 @@ class Game:
                 place_tile_x = int(place_x // tile_h)
                 place_tile_y = int(place_y // tile_h)
                 
+                place_x_centered = (place_x // tile_h) * tile_h + (tile_h / 2)
+                place_y_centered = (place_y // tile_h) * tile_h + (tile_h / 2)
+
                 if (place_tile_x >= 0 and place_tile_y >= 0 and
                     place_tile_x < self.room.heightmap.get_width() and
                     place_tile_y < self.room.heightmap.get_height()):
@@ -731,21 +734,25 @@ class Game:
                     if cell:
                         place_z = cell.height * tile_h
                         
-                        # Check if entity can be placed there
                         if can_place_entity_at_position(
                             self.hero.grabbed_entity,
-                            place_x,
-                            place_y,
+                            place_x_centered,
+                            place_y_centered,
                             place_z,
                             self.room.entities,
                             self.room.heightmap,
                             tile_h
                         ):
                             # Place the entity
-                            #self.hero.grabbed_entity.world_pos = Vector3(place_x, place_y, place_z)
-                            self.hero.grabbed_entity._world_pos.x = place_x
-                            self.hero.grabbed_entity._world_pos.y = place_y
-                            self.hero.grabbed_entity._world_pos.z = place_z
+                            self.hero.grabbed_entity.set_world_pos(
+                                place_x_centered,
+                                place_y_centered,
+                                place_z,
+                                self.room.heightmap.left_offset,
+                                self.room.heightmap.top_offset,
+                                self.camera_x,
+                                self.camera_y
+                            )
                             if self.hero.grabbed_entity.bbox:
                                 self.hero.grabbed_entity.bbox.update_position(self.hero.grabbed_entity._world_pos)
                             
