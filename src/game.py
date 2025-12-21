@@ -902,43 +902,6 @@ class Game:
         
         # Draw map and debug
         self.room.draw(self.surface, self.camera_x, self.camera_y, self.hero)
-                
-        # Prepare entities for drawing (update their screen positions)
-        tile_h = self.room.data.tileheight
-        for entity in self.room.entities:
-            entity._update_screen_pos(
-                self.room.heightmap.left_offset,
-                self.room.heightmap.top_offset,
-                self.camera_x,
-                self.camera_y
-            )
-        
-        # Create a list of all drawable objects (entities + hero)
-        drawable_objects = []
-        
-        # Add all entities with their sort key
-        for entity in self.room.entities:
-            if entity.get_world_pos() is not None:
-                # Sort key: Y + (Z + height)
-                # The top of the object determines draw order in isometric view
-                entity_height = entity.HEIGHT * tile_h  # Entity height in world units
-                sort_key = entity.get_world_pos().y + entity.get_world_pos().z + entity_height
-                drawable_objects.append((sort_key, entity))
-        
-        # Add hero with their sort key
-        if self.hero.get_world_pos() is not None:
-            # Hero is 2 tiles tall, so use their full height for sorting
-            hero_height = self.hero.HEIGHT * tile_h  # Hero height in world units (2 tiles)
-            sort_key = self.hero.get_world_pos().y + self.hero.get_world_pos().z + hero_height
-            drawable_objects.append((sort_key, self.hero))
-        
-        # Sort by Y+Z position (ascending order - back to front)
-        drawable_objects.sort(key=lambda x: x[0])
-        
-        # Draw all objects in sorted order
-        for _, obj in drawable_objects:
-            obj.draw(self.surface)
-        
 
         if self.debug_mode:
             if self.is_height_map_displayed:
