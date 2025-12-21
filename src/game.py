@@ -901,7 +901,7 @@ class Game:
         self.surface.fill((0, 0, 0))
         
         # Draw map and debug
-        self.room.draw(self.surface, self.camera_x, self.camera_y, self.hero)
+        self.room.draw(self.surface, self.camera_x, self.camera_y, self.hero, True, screen=self.screen)
 
         if self.debug_mode:
             if self.is_height_map_displayed:

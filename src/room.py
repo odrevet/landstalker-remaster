@@ -36,13 +36,29 @@ class Blockset:
         self.gid: Optional[int] = None
 
     def draw(self, surface: pygame.Surface, layer_offset_h: float, 
-             camera_x: float, camera_y: float) -> None:
+             camera_x: float, camera_y: float, debug_slow: bool = False,
+             screen: Optional[pygame.Surface] = None, display_width: int = DRAWING_WIDTH,
+             display_height: int = DRAWING_HEIGHT) -> None:
         if self.screen_pos.x - camera_x + layer_offset_h + 16 > 0 and \
            self.screen_pos.y - camera_y + layer_offset_h + 16 > 0 and \
            self.screen_pos.x - camera_x < DRAWING_WIDTH and \
            self.screen_pos.y - camera_y < DRAWING_HEIGHT:
             for tile in self.tiles:
                 tile.draw(surface, self.screen_pos, layer_offset_h, camera_x, camera_y)
+            
+            # Debug: pause after drawing this blockset
+            if debug_slow and screen:
+                # Scale and display immediately
+                screen_w, screen_h = screen.get_size()
+                scale = min(screen_w / display_width, screen_h / display_height)
+                scaled_w = int(display_width * scale)
+                scaled_h = int(display_height * scale)
+                scaled_surface = pygame.transform.scale(surface, (scaled_w, scaled_h))
+                
+                offset_x = (screen_w - scaled_w) // 2
+                offset_y = (screen_h - scaled_h) // 2
+                screen.fill((0, 0, 0))
+                screen.blit(scaled_surface, (offset_x, offset_y))
 
 
 class Layer:
@@ -50,9 +66,11 @@ class Layer:
         self.data: Optional[TiledTileLayer] = None
         self.blocksets: List[Blockset] = []
 
-    def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float) -> None:
+    def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float,
+             debug_slow: bool = False, screen: Optional[pygame.Surface] = None) -> None:
         for blockset in self.blocksets:
-            blockset.draw(surface, self.data.offsetx, camera_x, camera_y)
+            blockset.draw(surface, self.data.offsetx, camera_x, camera_y, 
+                         debug_slow, screen)
 
 
 class Room:
@@ -130,10 +148,11 @@ class Room:
                 entity = Entity(entity_data, 16)
                 self.entities.append(entity)
 
-    def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float, hero: Hero) -> None:
-        self.background_layer.draw(surface, camera_x, camera_y)
-        self.foreground_layer.draw(surface, camera_x, camera_y)
-
+    def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float, hero: Hero,
+             debug_slow: bool = False, screen: Optional[pygame.Surface] = None) -> None:
+        #self.background_layer.draw(surface, camera_x, camera_y, debug_slow, screen)
+        #self.foreground_layer.draw(surface, camera_x, camera_y, debug_slow, screen)
+        
         # Prepare entities for drawing (update their screen positions)
         tile_h = self.data.tileheight
         for entity in self.entities:
@@ -147,29 +166,146 @@ class Room:
         # Create a list of all drawable objects (entities + hero)
         drawable_objects = []
         
-        # Add all entities with their sort key
+        # Add all entities
         for entity in self.entities:
-            if entity.get_world_pos() is not None:
-                # Sort key: Y + (Z + height)
-                # The top of the object determines draw order in isometric view
-                entity_height = entity.HEIGHT * tile_h  # Entity height in world units
-                sort_key = entity.get_world_pos().y + entity.get_world_pos().z + entity_height
-                drawable_objects.append((sort_key, entity))
+            x = entity.get_world_pos().x
+            y = entity.get_world_pos().y
+            sort_key = x // 16 + y // 16
+            drawable_objects.append((sort_key, 'entity', entity))
+            print(f"add entity {x} {y} sort key {sort_key}")
         
-        # Add hero with their sort key
-        if hero.get_world_pos() is not None:
-            # Hero is 2 tiles tall, so use their full height for sorting
-            hero_height = hero.HEIGHT * tile_h  # Hero height in world units (2 tiles)
-            sort_key = hero.get_world_pos().y + hero.get_world_pos().z + hero_height
-            drawable_objects.append((sort_key, hero))
+        # Add hero
+        x = hero.get_world_pos().x
+        y = hero.get_world_pos().y
+        sort_key = x // 16 + y // 16
+        drawable_objects.append((sort_key, 'entity', hero))
+        print(f"add hero {x} {y} sort key {sort_key}")
         
-        # Sort by Y+Z position (ascending order - back to front)
+        # Add heightmap cells with their sort keys
+        offset_x = (self.heightmap.left_offset - 12) * tile_h - 12
+        offset_y = (self.heightmap.top_offset - 11) * tile_h - 12
+        
+        for y, row in enumerate(self.heightmap.cells):
+            for x, cell in enumerate(row):
+                sort_key = x + y
+                drawable_objects.append((sort_key, 'heightmap', (x, y, cell)))
+                print(f"add heightmap {x} {y} sort key {sort_key}")
+
+        #sys.exit()
+        
+        # Sort all objects by their sort key (back to front)
         drawable_objects.sort(key=lambda x: x[0])
         
-        # Draw all objects in sorted order
-        for _, obj in drawable_objects:
-            obj.draw(surface)
+        # Draw all objects in sorted order with masking
+        for _, obj_type, obj in drawable_objects:
+            if obj_type == 'entity':
+                obj.draw(surface)
+            elif obj_type == 'heightmap':
+                x, y, cell = obj
+                self._draw_heightmap_cell_mask(surface, x, y, cell, tile_h, camera_x, camera_y, offset_x, offset_y)
 
+            print(f"{obj_type} {_}")
+            
+            # Debug: pause after drawing each object
+            if debug_slow and screen:
+                screen_w, screen_h = screen.get_size()
+                scale = min(screen_w / DRAWING_WIDTH, screen_h / DRAWING_HEIGHT)
+                scaled_w = int(DRAWING_WIDTH * scale)
+                scaled_h = int(DRAWING_HEIGHT * scale)
+                scaled_surface = pygame.transform.scale(surface, (scaled_w, scaled_h))
+                
+                offset_x_screen = (screen_w - scaled_w) // 2
+                offset_y_screen = (screen_h - scaled_h) // 2
+                screen.fill((0, 0, 0))
+                screen.blit(scaled_surface, (offset_x_screen, offset_y_screen))
+                
+                pygame.display.flip()
+                pygame.time.delay(50)
+
+
+    def _draw_heightmap_cell_mask(self, screen: pygame.Surface, 
+                                x: int, y: int, cell, tile_height: int, 
+                                camera_x: float, camera_y: float, 
+                                offset_x: float, offset_y: float) -> None:
+        """Draw a heightmap cell as a solid mask to occlude entities behind it."""
+        
+        height = cell.height
+        
+        # Skip cells at ground level (height 0) as they don't occlude
+        if height == 0:
+            return
+        
+        # Compute four corners of tile
+        left_x, left_y = cartesian_to_iso(
+            x * tile_height - offset_x,
+            y * tile_height + tile_height - offset_y
+        )
+        bottom_x, bottom_y = cartesian_to_iso(
+            x * tile_height + tile_height - offset_x,
+            y * tile_height + tile_height - offset_y,
+        )
+        top_x, top_y = cartesian_to_iso(
+            x * tile_height - offset_x, 
+            y * tile_height - offset_y
+        )
+        right_x, right_y = cartesian_to_iso(
+            x * tile_height + tile_height - offset_x,
+            y * tile_height - offset_y
+        )
+        
+        # Choose base color by conditions
+        if cell.walkable >= 4:
+            base_color = (255, 80, 80)
+        elif height >= 20:
+            base_color = (255, 120, 120)
+        else:
+            base_color = (200, 200, 255)
+        
+        # Draw the top face as a solid polygon
+        top_points = [
+            (left_x - camera_x,  left_y  - camera_y - height * tile_height),
+            (bottom_x - camera_x, bottom_y - camera_y - height * tile_height),
+            (right_x - camera_x, right_y - camera_y - height * tile_height),
+            (top_x - camera_x,   top_y   - camera_y - height * tile_height),
+        ]
+        
+        if len(top_points) >= 3:
+            pygame.draw.polygon(screen, base_color, top_points)
+        
+        # Draw vertical faces if neighboring tiles are lower
+        heightmap = self.heightmap
+        
+        # Right face (when right neighbor is lower)
+        if x < len(heightmap.cells[0]) - 1:
+            neighbor_h = heightmap.cells[y][x + 1].height
+            if neighbor_h < height:
+                # Darken color for side face
+                side_color = (base_color[0] * 0.7, base_color[1] * 0.7, base_color[2] * 0.7)
+                
+                front_points = [
+                    (bottom_x - camera_x, bottom_y - camera_y - height * tile_height),
+                    (bottom_x - camera_x, bottom_y - camera_y - neighbor_h * tile_height),
+                    (right_x - camera_x, right_y - camera_y - neighbor_h * tile_height),
+                    (right_x - camera_x, right_y - camera_y - height * tile_height),
+                ]
+                
+                pygame.draw.polygon(screen, side_color, front_points)
+        
+        # Left face (when bottom neighbor is lower)
+        if y < len(heightmap.cells) - 1:
+            neighbor_h = heightmap.cells[y + 1][x].height
+            if neighbor_h < height:
+                # Darken color more for left face (different angle)
+                side_color = (base_color[0] * 0.5, base_color[1] * 0.5, base_color[2] * 0.5)
+                
+                side_points = [
+                    (bottom_x - camera_x, bottom_y - camera_y - height * tile_height),
+                    (bottom_x - camera_x, bottom_y - camera_y - neighbor_h * tile_height),
+                    (left_x - camera_x, left_y - camera_y - neighbor_h * tile_height),
+                    (left_x - camera_x, left_y - camera_y - height * tile_height),
+                ]
+                
+                pygame.draw.polygon(screen, side_color, side_points)
 
     def populate_layer(self, layer: Layer) -> None:
         for y in range(layer.data.height):
