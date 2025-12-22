@@ -149,10 +149,7 @@ class Room:
                 self.entities.append(entity)
 
     def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float, hero: Hero,
-             debug_slow: bool = False, screen: Optional[pygame.Surface] = None) -> None:
-        #self.background_layer.draw(surface, camera_x, camera_y, debug_slow, screen)
-        #self.foreground_layer.draw(surface, camera_x, camera_y, debug_slow, screen)
-        
+            debug_slow: bool = False, screen: Optional[pygame.Surface] = None) -> None:
         # Prepare entities for drawing (update their screen positions)
         tile_h = self.data.tileheight
         for entity in self.entities:
@@ -166,45 +163,48 @@ class Room:
         # Create a list of all drawable objects (entities + hero)
         drawable_objects = []
         
-        # Add all entities
+        # Add all entities with secondary sort key = 1 (render after heightmap)
         for entity in self.entities:
-            x = entity.get_world_pos().x
-            y = entity.get_world_pos().y
-            sort_key = x // 16 + y // 16
-            drawable_objects.append((sort_key, 'entity', entity))
-            print(f"add entity {x} {y} sort key {sort_key}")
+            # Use bottom corner for sort key calculation
+            corners = entity.get_bbox_corners_world(tile_h)
+            bottom_corner = corners[1]  # (left, bottom, right, top) - get bottom
+            x = bottom_corner[0]
+            y = bottom_corner[1]
+            sort_key = x // tile_h + y // tile_h
+            drawable_objects.append((sort_key, 1, 'entity', entity))
+            #print(f"add entity bottom corner {x} {y} sort key {sort_key}")
         
-        # Add hero
-        x = hero.get_world_pos().x
-        y = hero.get_world_pos().y
-        sort_key = x // 16 + y // 16
-        drawable_objects.append((sort_key, 'entity', hero))
-        print(f"add hero {x} {y} sort key {sort_key}")
+        # Add hero with secondary sort key = 1 (render after heightmap)
+        # Use bottom corner for sort key calculation
+        corners = hero.get_bbox_corners_world(tile_h)
+        bottom_corner = corners[1]  # (left, bottom, right, top) - get bottom
+        x = bottom_corner[0]
+        y = bottom_corner[1]
+        sort_key = x // tile_h + y // tile_h
+        drawable_objects.append((sort_key, 1, 'entity', hero))
+        #print(f"add hero bottom corner {x} {y} sort key {sort_key}")
         
-        # Add heightmap cells with their sort keys
+        # Add heightmap cells with their sort keys and secondary sort key = 0 (render first)
         offset_x = (self.heightmap.left_offset - 12) * tile_h - 12
         offset_y = (self.heightmap.top_offset - 11) * tile_h - 12
-        
         for y, row in enumerate(self.heightmap.cells):
             for x, cell in enumerate(row):
                 sort_key = x + y
-                drawable_objects.append((sort_key, 'heightmap', (x, y, cell)))
-                print(f"add heightmap {x} {y} sort key {sort_key}")
+                drawable_objects.append((sort_key, 0, 'heightmap', (x, y, cell)))
+                #print(f"add heightmap {x} {y} sort key {sort_key}")
         
-        # Sort all objects by their sort key (back to front)
-        drawable_objects.sort(key=lambda x: x[0])
+        # Sort all objects by primary sort key, then by secondary key (0=heightmap first, 1=entities after)
+        drawable_objects.sort(key=lambda obj: (obj[0], obj[1]))
         
         # Draw all objects in sorted order with masking
-        for _, obj_type, obj in drawable_objects:
+        for sort_key, _, obj_type, obj in drawable_objects:
             if obj_type == 'entity':
-                print(f"{obj_type} pos {obj.get_world_pos()} key {_}")
+                #print(f"{obj_type} pos {obj.get_world_pos()} key {sort_key}")
                 obj.draw(surface)
             elif obj_type == 'heightmap':
-                print(f"{obj_type} pos {x} {y} key {_}")
                 x, y, cell = obj
+                #print(f"{obj_type} pos {x} {y} key {sort_key}")
                 self._draw_heightmap_cell_mask(surface, x, y, cell, tile_h, camera_x, camera_y, offset_x, offset_y)
-
-            
             
             # Debug: pause after drawing each object
             if debug_slow and screen:
@@ -213,12 +213,10 @@ class Room:
                 scaled_w = int(DRAWING_WIDTH * scale)
                 scaled_h = int(DRAWING_HEIGHT * scale)
                 scaled_surface = pygame.transform.scale(surface, (scaled_w, scaled_h))
-                
                 offset_x_screen = (screen_w - scaled_w) // 2
                 offset_y_screen = (screen_h - scaled_h) // 2
                 screen.fill((0, 0, 0))
                 screen.blit(scaled_surface, (offset_x_screen, offset_y_screen))
-                
                 pygame.display.flip()
                 pygame.time.delay(150)
 
