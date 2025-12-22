@@ -190,8 +190,6 @@ class Room:
                 sort_key = x + y
                 drawable_objects.append((sort_key, 'heightmap', (x, y, cell)))
                 print(f"add heightmap {x} {y} sort key {sort_key}")
-
-        #sys.exit()
         
         # Sort all objects by their sort key (back to front)
         drawable_objects.sort(key=lambda x: x[0])
@@ -199,12 +197,14 @@ class Room:
         # Draw all objects in sorted order with masking
         for _, obj_type, obj in drawable_objects:
             if obj_type == 'entity':
+                print(f"{obj_type} pos {obj.get_world_pos()} key {_}")
                 obj.draw(surface)
             elif obj_type == 'heightmap':
+                print(f"{obj_type} pos {x} {y} key {_}")
                 x, y, cell = obj
                 self._draw_heightmap_cell_mask(surface, x, y, cell, tile_h, camera_x, camera_y, offset_x, offset_y)
 
-            print(f"{obj_type} {_}")
+            
             
             # Debug: pause after drawing each object
             if debug_slow and screen:
@@ -220,7 +220,7 @@ class Room:
                 screen.blit(scaled_surface, (offset_x_screen, offset_y_screen))
                 
                 pygame.display.flip()
-                pygame.time.delay(50)
+                pygame.time.delay(150)
 
 
     def _draw_heightmap_cell_mask(self, screen: pygame.Surface, 
