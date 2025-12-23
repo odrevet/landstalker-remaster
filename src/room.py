@@ -166,22 +166,20 @@ class Room:
         # Add all entities with secondary sort key = 1 (render after heightmap)
         for entity in self.entities:
             # Use bottom corner for sort key calculation
-            corners = entity.get_bbox_corners_world(tile_h)
-            bottom_corner = corners[1]  # (left, bottom, right, top) - get bottom
-            x = bottom_corner[0]
-            y = bottom_corner[1]
-            sort_key = x // tile_h + y // tile_h
-            drawable_objects.append((sort_key, 1, 'entity', entity))
+            x = entity.get_world_pos().x
+            y = entity.get_world_pos().y
+            z = entity.get_world_pos().z
+            sort_key = x / tile_h + y / tile_h + z / tile_h
+            drawable_objects.append((sort_key, 0, 'entity', entity))
             #print(f"add entity bottom corner {x} {y} sort key {sort_key}")
         
         # Add hero with secondary sort key = 1 (render after heightmap)
         # Use bottom corner for sort key calculation
-        corners = hero.get_bbox_corners_world(tile_h)
-        bottom_corner = corners[1]  # (left, bottom, right, top) - get bottom
-        x = bottom_corner[0]
-        y = bottom_corner[1]
-        sort_key = x // tile_h + y // tile_h
-        drawable_objects.append((sort_key, 1, 'entity', hero))
+        x = hero.get_world_pos().x
+        y = hero.get_world_pos().y
+        z = hero.get_world_pos().z
+        sort_key = x / tile_h + y / tile_h + z / tile_h
+        drawable_objects.append((sort_key, 0, 'entity', hero))
         #print(f"add hero bottom corner {x} {y} sort key {sort_key}")
         
         # Add heightmap cells with their sort keys and secondary sort key = 0 (render first)
