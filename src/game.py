@@ -738,6 +738,7 @@ class Game:
                 if self.camera_locked:
                     self.center_camera_on_hero()
             
+            self.hero.update_z_velocity()
             self.hero.update_animation(is_moving)
     
     def handle_jump(self, keys: pygame.key.ScancodeWrapper) -> None:

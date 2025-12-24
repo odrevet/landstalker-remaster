@@ -13,7 +13,6 @@ class Hero(Drawable):
     
     # Animation constants
     ANIMATION_SPEED = 0.15  # Frames per game tick
-    JUMP_PEAK = 12  # Frame at which jump transitions from ascending to descending
     
     def __init__(self, x: float = 0, y: float = 0, z: float = 0) -> None:
         """Initialize the hero at given world coordinates
@@ -44,6 +43,10 @@ class Hero(Drawable):
         self.current_jump: int = 0
         self.is_moving: bool = False
         self.facing_direction: str = "DOWN"  # UP, DOWN, LEFT, RIGHT
+        
+        # Z-axis movement tracking
+        self.previous_z: float = z
+        self.z_velocity: float = 0.0  # Positive = ascending, negative = descending
         
         # Interaction state
         self.is_grabbing: bool = False
@@ -99,10 +102,40 @@ class Hero(Drawable):
         for anim_name in ["jump_front", "jump_back", "jump_left", "jump_right"]:
             self.animations[anim_name] = [placeholder.copy() for _ in range(2)]
     
+    def update_z_velocity(self) -> None:
+        """Calculate Z-axis velocity based on position change"""
+        current_z = self._world_pos.z
+        self.z_velocity = current_z - self.previous_z
+        self.previous_z = current_z
+    
+    def is_ascending(self) -> bool:
+        """Check if hero is moving upward in Z-axis
+        
+        Returns:
+            True if ascending (positive Z velocity)
+        """
+        return self.z_velocity > 0
+    
+    def is_descending(self) -> bool:
+        """Check if hero is moving downward in Z-axis
+        
+        Returns:
+            True if descending (negative Z velocity)
+        """
+        return self.z_velocity < 0
+    
+    def is_airborne(self) -> bool:
+        """Check if hero is in the air (jumping or falling)
+        
+        Returns:
+            True if not touching ground
+        """
+        return not self.touch_ground
+    
     def update_animation(self, is_moving: bool) -> None:
         """Update the current animation based on movement state and direction
         
-        Args:
+        Args
             is_moving: Whether the hero is currently moving
         """
         self.is_moving = is_moving
@@ -123,8 +156,10 @@ class Hero(Drawable):
         Returns:
             Name of the animation to play
         """
-        # Priority: jumping > walking > idle
+        # Priority: jumping (is_jumping) > airborne (falling) > walking > idle
         if self.is_jumping:
+            state = "jump"
+        elif self.is_airborne():
             state = "jump"
         elif self.is_moving:
             state = "walk"
@@ -141,22 +176,27 @@ class Hero(Drawable):
         
         direction = direction_map.get(self.facing_direction, "front")
         return f"{state}_{direction}"
-    
+
     def _update_frame_index(self, is_moving: bool) -> None:
         """Update the current frame index based on animation state
         
         Args:
             is_moving: Whether the hero is currently moving
         """
-        if self.is_jumping:
+        if self.is_airborne() or self.is_jumping:
             # Jump animation: frame 0 = ascending, frame 1 = descending
-            frame_index = 0 if self.current_jump < self.JUMP_PEAK else 1
+            # During active jump (is_jumping=True), always show ascending frame
+            # When falling (is_jumping=False), show descending frame
+            if self.is_jumping or self.is_ascending():
+                frame_index = 0  # Ascending frame
+            else:
+                frame_index = 1  # Descending/falling frame
             self.set_animation_frame(frame_index)
         else:
             # Walk/idle animations advance automatically
             should_advance = is_moving or len(self.animations[self.current_animation]) == 1
             self.update_animation_frame(advance=should_advance)
-    
+
     def _apply_direction_mirroring(self) -> None:
         """Apply horizontal mirroring to the image based on facing direction"""
         if not self.current_animation or self.current_animation not in self.animations:
@@ -286,7 +326,8 @@ class Hero(Drawable):
             f"facing={self.facing_direction}, "
             f"animation={self.current_animation}, "
             f"frame={self.current_frame}, "
-            f"jumping={self.is_jumping}, "
+            f"airborne={self.is_airborne()}, "
+            f"z_vel={self.z_velocity:.2f}, "
             f"moving={self.is_moving}, "
             f"grabbing={self.is_grabbing}"
             f")"
