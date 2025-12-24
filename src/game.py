@@ -15,6 +15,7 @@ from debug import draw_heightmap, draw_warps, draw_boundbox
 from collision import (resolve_entity_collision, get_entity_top_at_position, check_collids_entity, get_entity_hero_is_standing_on, 
                       get_entity_in_front_of_hero, can_place_entity_at_position, get_position_in_front_of_hero, get_touching_entities)
 from script_commands import run_entity_script
+from menu_screen import MenuScreen
 
 # Constants
 DISPLAY_HEIGHT: int = 224
@@ -122,6 +123,9 @@ class Game:
             manager=self.manager
         )
 
+        self.menu_screen = MenuScreen(DISPLAY_WIDTH, DISPLAY_HEIGHT)
+        self.menu_active = False
+        
         self.dialog_textbox.hide()
         self.coord_dialog.hide()
         
@@ -256,6 +260,15 @@ class Game:
                 if event.key == pygame.K_F11:
                     # Toggle fullscreen
                     self.toggle_fullscreen()
+                elif event.key == pygame.K_RETURN:
+                    # Toggle menu
+                    self.menu_active = not self.menu_active
+            
+            # Process events for appropriate manager
+            if self.menu_active:
+                self.menu_screen.process_events(event)
+            else:
+                self.manager.process_events(event)
             
             self.manager.process_events(event)
         
@@ -1032,8 +1045,16 @@ class Game:
             if keys[pygame.K_ESCAPE]:
                 break
   
-            if self.display_dialog:
-                # Show dialog elements
+            if self.menu_active:
+                # Menu mode - handle menu input
+                self.menu_active = self.menu_screen.handle_input(keys, self.prev_keys)
+                self.menu_screen.update(time_delta)
+                
+                # Render menu
+                self.menu_screen.render(self.surface)
+                
+            elif self.display_dialog:
+                # Dialog mode
                 self.dialog_textbox.show()
                 self.coord_dialog.show()
                 
@@ -1043,31 +1064,44 @@ class Game:
                     self.dialog_textbox.hide()
                     self.coord_dialog.hide()
             else:
-                # Hide dialog elements
+                # Normal gameplay controls
                 self.dialog_textbox.hide()
                 self.coord_dialog.hide()
 
-                # Normal gameplay controls
                 self.handle_camera_movement(keys)
                 self.handle_debug_toggles(keys)
                 self.apply_gravity()
                 self.handle_hero_movement(keys)
-
                 self.handle_jump(keys)
                 self.check_action(keys)
-                # warp/fall checks will now start fades; they return True if a fade initiated
-                self.check_warp_collision()  # Check for warps after movement
+                self.check_warp_collision()
                 self.check_fall()
+                
+                # Update and render game
+                self.update_hud()
+                self.manager.update(time_delta)
+                self.update_fade(time_delta)
+                self.render()
             
-            # Update
-            self.update_hud()
-            self.manager.update(time_delta)
-            # Update fade (must be after manager.update so UI changes are visible under fade)
-            self.update_fade(time_delta)
-            # Render
-            self.render()
+            # Scale and display (always render to screen)
+            if self.menu_active:
+                # Scale menu surface to screen
+                screen_w, screen_h = self.screen.get_size()
+                scale = min(screen_w / DISPLAY_WIDTH, screen_h / DISPLAY_HEIGHT)
+                scaled_w = int(DISPLAY_WIDTH * scale)
+                scaled_h = int(DISPLAY_HEIGHT * scale)
+                scaled_surface = pygame.transform.scale(self.surface, (scaled_w, scaled_h))
+                
+                offset_x = (screen_w - scaled_w) // 2
+                offset_y = (screen_h - scaled_h) // 2
+                self.screen.fill((0, 0, 0))
+                self.screen.blit(scaled_surface, (offset_x, offset_y))
+                pygame.display.flip()
+            
             # Store current key states for next frame
-            self.prev_keys = {k: keys[k] for k in [pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_a, pygame.K_F1, pygame.K_F2, pygame.K_F3]}
+            self.prev_keys = {k: keys[k] for k in [pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT, 
+                                                     pygame.K_a, pygame.K_b, pygame.K_RETURN,
+                                                     pygame.K_F1, pygame.K_F2, pygame.K_F3]}
         
         pygame.quit()
         sys.exit()
