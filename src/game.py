@@ -4,11 +4,9 @@ import os
 import argparse
 from typing import List, Tuple, Optional, Callable
 import yaml
-
 import pygame
 import pygame_gui
 from pygame_gui.elements.ui_text_box import UITextBox
-
 from hero import Hero
 from utils import *
 from room import Room
@@ -27,25 +25,50 @@ HERO_SPEED: float = 1.75
 HERO_MAX_JUMP: int = 24
 FPS: int = 60
 
-
 class Game:
     def __init__(self, args: argparse.Namespace) -> None:
         pygame.init()
         pygame.mixer.init()
-
-        # Display setup
+        
+        # Store display configuration
         self.is_fullscreen: bool = args.fullscreen
+        self.is_resizable: bool = args.resizable
+        self.display_scale: int = args.scale
+        
+        # Base resolution (internal rendering resolution)
+        self.base_width: int = DISPLAY_WIDTH
+        self.base_height: int = DISPLAY_HEIGHT
+        
+        # Window resolution
+        self.window_width: int = args.width * self.display_scale
+        self.window_height: int = args.height * self.display_scale
+        
+        # Display setup
         if self.is_fullscreen:
+            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            # Get actual fullscreen resolution
+            info = pygame.display.Info()
+            self.window_width = info.current_w
+            self.window_height = info.current_h
+        elif self.is_resizable:
             self.screen = pygame.display.set_mode(
-                (0, 0), pygame.FULLSCREEN
+                (self.window_width, self.window_height), 
+                pygame.RESIZABLE
             )
         else:
             self.screen = pygame.display.set_mode(
-                (DISPLAY_WIDTH, DISPLAY_HEIGHT)
+                (self.window_width, self.window_height)
             )
-
-        self.surface: pygame.Surface = pygame.Surface((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        
+        # Surface for rendering (always at base resolution for pixel-perfect scaling)
+        self.surface: pygame.Surface = pygame.Surface(
+            (self.base_width, self.base_height)
+        )
+        
         pygame.display.set_caption("LandStalker")
+        
+        # Calculate initial scaling
+        self._update_scaling()
         
         # Game state
         self.room_number: int = args.room
@@ -228,20 +251,11 @@ class Game:
             if event.type == pygame.QUIT:
                 return False
             elif event.type == pygame.VIDEORESIZE:
-                if not self.is_fullscreen:
-                    self.screen = pygame.display.set_mode(event.size, pygame.RESIZABLE)
+                self.handle_window_resize(event)
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     # Toggle fullscreen
-                    self.is_fullscreen = not self.is_fullscreen
-                    if self.is_fullscreen:
-                        self.screen = pygame.display.set_mode(
-                            (0, 0), pygame.FULLSCREEN
-                        )
-                    else:
-                        self.screen = pygame.display.set_mode(
-                            (DISPLAY_WIDTH, DISPLAY_HEIGHT)
-                        )
+                    self.toggle_fullscreen()
             
             self.manager.process_events(event)
         
@@ -313,6 +327,64 @@ class Game:
                 self.fade_mode = None
         self.fade_surface.set_alpha(self.fade_alpha)
     
+    def _update_scaling(self) -> None:
+        """Calculate optimal scaling to fit the window while maintaining aspect ratio."""
+        window_width, window_height = self.screen.get_size()
+        
+        # Calculate scale factors for both dimensions
+        scale_x = window_width / self.base_width
+        scale_y = window_height / self.base_height
+        
+        # Use the smaller scale to maintain aspect ratio
+        self.scale = min(scale_x, scale_y)
+        
+        # Calculate scaled dimensions
+        self.scaled_width = int(self.base_width * self.scale)
+        self.scaled_height = int(self.base_height * self.scale)
+        
+        # Calculate offsets to center the game
+        self.offset_x = (window_width - self.scaled_width) // 2
+        self.offset_y = (window_height - self.scaled_height) // 2
+    
+    def handle_window_resize(self, event: pygame.event.Event) -> None:
+        """Handle window resize events."""
+        if event.type == pygame.VIDEORESIZE:
+            if not self.is_fullscreen:
+                self.window_width = event.w
+                self.window_height = event.h
+                self._update_scaling()
+    
+    def toggle_fullscreen(self) -> None:
+        """Toggle between fullscreen and windowed mode."""
+        self.is_fullscreen = not self.is_fullscreen
+        
+        if self.is_fullscreen:
+            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            info = pygame.display.Info()
+            self.window_width = info.current_w
+            self.window_height = info.current_h
+        else:
+            self.screen = pygame.display.set_mode(
+                (self.window_width, self.window_height),
+                pygame.RESIZABLE if self.is_resizable else 0
+            )
+        
+        self._update_scaling()
+    
+    def render_to_screen(self) -> None:
+        """Render the game surface to the screen with proper scaling."""
+        # Fill screen with black bars if needed
+        self.screen.fill((0, 0, 0))
+        
+        # Scale the surface and blit to screen
+        scaled_surface = pygame.transform.scale(
+            self.surface, 
+            (self.scaled_width, self.scaled_height)
+        )
+        self.screen.blit(scaled_surface, (self.offset_x, self.offset_y))
+        
+        pygame.display.flip()
+
     def check_warp_collision(self) -> bool:
         """Check if hero is colliding with any warp and handle room transition."""
         tile_h: int = self.room.data.tileheight
