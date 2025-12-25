@@ -80,17 +80,8 @@ class ScriptCommands:
         dx, dy = direction_map.get(orientation, (0.0, 0.0))
         
         # Update entity's tile position
-        self.entity.x += dx * distance
-        self.entity.y += dy * distance
-        
-        # Recalculate world position based on new tile coordinates
-        if hasattr(self.entity, 'set_world_pos'):
-            # Assuming tile_h is stored somewhere accessible
-            # You may need to pass this in or store it in the entity
-            tile_h = 16  # Default tile height - should be passed from game state
-            self.entity.set_world_pos(tile_h)
-            
-        print(f"       New position: ({self.entity.x}, {self.entity.y}, {self.entity.z})")
+        self.entity.add_world_x(dx * distance) 
+        self.entity.add_world_y(dy * distance) 
     
     def cmd_move_absolute(self, params: Dict[str, Any]) -> None:
         """Move entity to absolute position

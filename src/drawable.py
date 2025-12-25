@@ -71,6 +71,24 @@ class Drawable:
         if self.bbox is not None:
             self.bbox.world_pos = self._world_pos
     
+    def set_world_x(self, x: float) -> None:
+        self._world_pos.x = x
+
+    def set_world_y(self, y: float) -> None:
+        self._world_pos.y = y
+
+    def set_world_z(self, z: float) -> None:
+        self._world_pos.z = z
+
+    def add_world_x(self, dx: float) -> None:
+        self._world_pos.x += dx
+
+    def add_world_y(self, dy: float) -> None:
+        self._world_pos.y += dy
+
+    def add_world_z(self, dz: float) -> None:
+        self._world_pos.z += dz
+
     def update_camera(self, heightmap_left_offset: int, heightmap_top_offset: int, 
                      camera_x: float, camera_y: float) -> None:
         """Update screen position when camera moves without changing world position
