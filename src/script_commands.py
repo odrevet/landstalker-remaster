@@ -67,6 +67,8 @@ class ScriptCommands:
         # Get current orientation to determine movement direction
         # Orientations in isometric: NE, SE, SW, NW
         orientation = self.entity.orientation
+
+        print(f"current orientation is {orientation}")
         
         # Calculate direction vector based on orientation
         # In tile coordinates (x, y)
@@ -79,6 +81,8 @@ class ScriptCommands:
         
         dx, dy = direction_map.get(orientation, (0.0, 0.0))
         
+        print(f"move {dx} {dy}")
+
         # Update entity's tile position
         self.entity.add_world_x(dx * distance) 
         self.entity.add_world_y(dy * distance) 
@@ -110,24 +114,41 @@ class ScriptCommands:
     # === Rotation Commands ===
     
     def cmd_turn_cw(self, params: Optional[Dict[str, Any]] = None) -> None:
-        """Turn entity clockwise (90 degrees)
-        
-        Args:
-            params: Optional parameters
-        """
-        print(f"  [STUB] TurnCW: rotating 90° clockwise")
-        # TODO: Implement clockwise rotation
-        # self.entity.rotate_cw()
+        """Turn entity clockwise (90 degrees)"""
+        rotation = {
+            "N":  "E",
+            "NE": "SE",
+            "E":  "S",
+            "SE": "SW",
+            "S":  "W",
+            "SW": "NW",
+            "W":  "N",
+            "NW": "NE",
+        }
+
+        print("turn clockwise")
+
+        current = self.entity.orientation
+        self.entity.orientation = rotation.get(current)
+
     
     def cmd_turn_ccw(self, params: Optional[Dict[str, Any]] = None) -> None:
-        """Turn entity counter-clockwise (90 degrees)
-        
-        Args:
-            params: Optional parameters
-        """
-        print(f"  [STUB] TurnCCW: rotating 90° counter-clockwise")
-        # TODO: Implement counter-clockwise rotation
-        # self.entity.rotate_ccw()
+        """Turn entity counter-clockwise (90 degrees)"""
+        rotation = {
+            "N":  "W",
+            "NW": "SW",
+            "W":  "S",
+            "SW": "SE",
+            "S":  "E",
+            "SE": "NE",
+            "E":  "N",
+            "NE": "NW",
+        }
+
+        print("turn counter clockwise")
+
+        current = self.entity.orientation
+        self.entity.orientation = rotation.get(current)
     
     def cmd_turn_to_face(self, params: Dict[str, Any]) -> None:
         """Turn entity to face a specific direction or target
