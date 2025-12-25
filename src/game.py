@@ -819,6 +819,7 @@ class Game:
                     place_z = cell.height * tile_h
                     
                     if can_place_entity_at_position(
+                        hero_pos.z,
                         self.hero.grabbed_entity,
                         place_x,
                         place_y,
@@ -829,8 +830,8 @@ class Game:
                     ):
                         # Place the entity at exact pixel position
                         self.hero.grabbed_entity.set_world_pos(
-                            place_x,  # Exact pixel position
-                            place_y,  # Exact pixel position
+                            place_x,
+                            place_y,
                             place_z,
                             self.room.heightmap.left_offset,
                             self.room.heightmap.top_offset,
@@ -840,7 +841,7 @@ class Game:
                         if self.hero.grabbed_entity.bbox:
                             self.hero.grabbed_entity.bbox.update_position(self.hero.grabbed_entity._world_pos)
                         
-                        print(f"Placed entity: {self.hero.grabbed_entity.name} at ({place_x:.1f}, {place_y:.1f})")
+                        print(f"Placed entity: {self.hero.grabbed_entity.name} at ({place_x:.1f}, {place_y:.1f}, {place_z:.1f})")
                         
                         # Release the entity
                         self.hero.release_entity()

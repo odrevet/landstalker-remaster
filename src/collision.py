@@ -327,7 +327,8 @@ def get_entity_in_front_of_hero(hero: Hero,
     return None
 
 
-def can_place_entity_at_position(entity: Entity,
+def can_place_entity_at_position(hero_z: int,
+                                entity: Entity,
                                  x: float,
                                  y: float,
                                  z: float,
@@ -366,7 +367,7 @@ def can_place_entity_at_position(entity: Entity,
     
     # Check if Z matches terrain height (entity should be on ground)
     terrain_z = cell.height * tile_h
-    if abs(z - terrain_z) > 1.0:  # Small tolerance for floating point
+    if terrain_z - hero_z > 32:
         return False
     
     # Create temporary bounding box for collision check
