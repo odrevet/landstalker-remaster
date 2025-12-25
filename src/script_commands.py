@@ -73,10 +73,10 @@ class ScriptCommands:
         # Calculate direction vector based on orientation
         # In tile coordinates (x, y)
         direction_map = {
-            'NE': (0, -1), 
-            'SE': (0, 1), 
-            'SW': (1, 0),
-            'NW': (-1, 0),
+            'NE': (0, -16), 
+            'SE': (16, 0), 
+            'SW': (-16, 0),
+            'NW': (0, 16),
         }
         
         dx, dy = direction_map.get(orientation, (0.0, 0.0))
@@ -116,14 +116,10 @@ class ScriptCommands:
     def cmd_turn_cw(self, params: Optional[Dict[str, Any]] = None) -> None:
         """Turn entity clockwise (90 degrees)"""
         rotation = {
-            "N":  "E",
             "NE": "SE",
-            "E":  "S",
-            "SE": "SW",
-            "S":  "W",
-            "SW": "NW",
-            "W":  "N",
-            "NW": "NE",
+            "SE": "NW",
+            "NW": "SW",
+            "SW": "NE",
         }
 
         print("turn clockwise")
@@ -135,14 +131,10 @@ class ScriptCommands:
     def cmd_turn_ccw(self, params: Optional[Dict[str, Any]] = None) -> None:
         """Turn entity counter-clockwise (90 degrees)"""
         rotation = {
-            "N":  "W",
-            "NW": "SW",
-            "W":  "S",
-            "SW": "SE",
-            "S":  "E",
             "SE": "NE",
-            "E":  "N",
-            "NE": "NW",
+            "NW": "SE",
+            "SW": "NW",
+            "NE": "SW",
         }
 
         print("turn counter clockwise")
