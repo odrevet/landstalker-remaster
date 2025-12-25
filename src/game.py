@@ -789,96 +789,95 @@ class Game:
                 self.hero.is_jumping = False
                 self.hero.current_jump = 0
     
+
     def check_action(self, keys: pygame.key.ScancodeWrapper) -> None:
-            """Handle action button (A key) - interact with entities or pickup/place"""
-            tile_h: int = self.room.data.tileheight
+        """Handle action button (A key) - interact with entities or pickup/place"""
+        tile_h: int = self.room.data.tileheight
+        
+        # Check if action button (A key) was just pressed
+        if not self.is_key_just_pressed(pygame.K_a, keys):
+            return
+        
+        # handle pickup/place
+        if self.hero.is_grabbing:
+            # Try to place the entity in front of hero
+            hero_pos = self.hero.get_world_pos()
             
-            # Check if action button (A key) was just pressed
-            if not self.is_key_just_pressed(pygame.K_a, keys):
-                return
+            # Get position in front of hero
+            place_x, place_y = get_position_in_front_of_hero(self.hero, tile_h)
             
-            # handle pickup/place
-            if self.hero.is_grabbing:
-                # Try to place the entity in front of hero
-                hero_pos = self.hero.get_world_pos()
-                
-                # Get position in front of hero
-                place_x, place_y = get_position_in_front_of_hero(self.hero, tile_h)
-                
-                # Get ground Z at that position
-                place_tile_x = int(place_x // tile_h)
-                place_tile_y = int(place_y // tile_h)
-                
-                place_x_centered = (place_x // tile_h) * tile_h + (tile_h / 2)
-                place_y_centered = (place_y // tile_h) * tile_h + (tile_h / 2)
+            # Get tile coordinates for terrain height check
+            place_tile_x = int(place_x // tile_h)
+            place_tile_y = int(place_y // tile_h)
 
-                if (place_tile_x >= 0 and place_tile_y >= 0 and
-                    place_tile_x < self.room.heightmap.get_width() and
-                    place_tile_y < self.room.heightmap.get_height()):
+            if (place_tile_x >= 0 and place_tile_y >= 0 and
+                place_tile_x < self.room.heightmap.get_width() and
+                place_tile_y < self.room.heightmap.get_height()):
+                
+                cell = self.room.heightmap.get_cell(place_tile_x, place_tile_y)
+                if cell:
+                    place_z = cell.height * tile_h
                     
-                    cell = self.room.heightmap.get_cell(place_tile_x, place_tile_y)
-                    if cell:
-                        place_z = cell.height * tile_h
-                        
-                        if can_place_entity_at_position(
-                            self.hero.grabbed_entity,
-                            place_x_centered,
-                            place_y_centered,
+                    if can_place_entity_at_position(
+                        self.hero.grabbed_entity,
+                        place_x,
+                        place_y,
+                        place_z,
+                        self.room.entities,
+                        self.room.heightmap,
+                        tile_h
+                    ):
+                        # Place the entity at exact pixel position
+                        self.hero.grabbed_entity.set_world_pos(
+                            place_x,  # Exact pixel position
+                            place_y,  # Exact pixel position
                             place_z,
-                            self.room.entities,
-                            self.room.heightmap,
-                            tile_h
-                        ):
-                            # Place the entity
-                            self.hero.grabbed_entity.set_world_pos(
-                                place_x_centered,
-                                place_y_centered,
-                                place_z,
-                                self.room.heightmap.left_offset,
-                                self.room.heightmap.top_offset,
-                                self.camera_x,
-                                self.camera_y
-                            )
-                            if self.hero.grabbed_entity.bbox:
-                                self.hero.grabbed_entity.bbox.update_position(self.hero.grabbed_entity._world_pos)
-                            
-                            print(f"Placed entity: {self.hero.grabbed_entity.name} at ({place_tile_x}, {place_tile_y})")
-                            
-                            # Release the entity
-                            self.hero.release_entity()
-                        else:
-                            print("Cannot place entity here - position blocked")
-                    else:
-                        print("Cannot place entity here - invalid terrain")
-                else:
-                    print("Cannot place entity here - out of bounds")
-            else:
-                # Check for entity in front of hero
-                entity = get_entity_in_front_of_hero(
-                    self.hero,
-                    self.room.entities,
-                    tile_h
-                )
-
-                if entity is not None: 
-                    # handle dialog
-                    if entity.has_dialogue == True:
-                        self.show_dialog(entity.dialogue)
-                        return
-                    elif entity.no_pickup == False:
-                        # Try to grab an entity
-                        self.hero.grab_entity(entity)
-                        
-                        # Position entity above hero
-                        self.hero.update_grabbed_entity_position(
                             self.room.heightmap.left_offset,
                             self.room.heightmap.top_offset,
                             self.camera_x,
-                            self.camera_y,
-                            tile_h
+                            self.camera_y
                         )
+                        if self.hero.grabbed_entity.bbox:
+                            self.hero.grabbed_entity.bbox.update_position(self.hero.grabbed_entity._world_pos)
                         
-                        print(f"Grabbed entity: {entity.name}")
+                        print(f"Placed entity: {self.hero.grabbed_entity.name} at ({place_x:.1f}, {place_y:.1f})")
+                        
+                        # Release the entity
+                        self.hero.release_entity()
+                    else:
+                        print("Cannot place entity here - position blocked")
+                else:
+                    print("Cannot place entity here - invalid terrain")
+            else:
+                print("Cannot place entity here - out of bounds")
+        else:
+            # Check for entity in front of hero
+            entity = get_entity_in_front_of_hero(
+                self.hero,
+                self.room.entities,
+                tile_h
+            )
+
+            if entity is not None: 
+                # handle dialog
+                if entity.has_dialogue == True:
+                    self.show_dialog(entity.dialogue)
+                    return
+                elif entity.no_pickup == False:
+                    # Try to grab an entity
+                    self.hero.grab_entity(entity)
+                    
+                    # Position entity above hero
+                    self.hero.update_grabbed_entity_position(
+                        self.room.heightmap.left_offset,
+                        self.room.heightmap.top_offset,
+                        self.camera_x,
+                        self.camera_y,
+                        tile_h
+                    )
+                    
+                    print(f"Grabbed entity: {entity.name}")
+
     def handle_debug_toggles(self, keys: pygame.key.ScancodeWrapper) -> None:
         """Handle debug flag toggles"""
         if self.debug_mode:
