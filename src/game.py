@@ -714,7 +714,7 @@ class Game:
             if moved:
                 entity = check_collids_entity(self.hero, new_x, new_y, self.room.entities, 16)
                 if entity is not None:
-                    print(f"Collids with {entity.name}")
+                    print(f"Hero at {self.hero.get_world_pos()} collids with {entity.name} at {entity.get_world_pos()}")
 
                 # Resolve entity collisions in XY plane
                 # This only handles horizontal collision, not Z-axis (gravity handles that)
