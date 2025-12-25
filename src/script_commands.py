@@ -73,10 +73,10 @@ class ScriptCommands:
         # Calculate direction vector based on orientation
         # In tile coordinates (x, y)
         direction_map = {
-            'NE': (1.0, 0.0),   # Move along +X axis
-            'SE': (0.0, 1.0),   # Move along +Y axis
-            'SW': (-1.0, 0.0),  # Move along -X axis
-            'NW': (0.0, -1.0),  # Move along -Y axis
+            'NE': (0, -1), 
+            'SE': (0, 1), 
+            'SW': (1, 0),
+            'NW': (-1, 0),
         }
         
         dx, dy = direction_map.get(orientation, (0.0, 0.0))
