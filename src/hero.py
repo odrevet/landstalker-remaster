@@ -250,8 +250,8 @@ class Hero(Drawable):
         self._camera_y = camera_y
         
         # Calculate world-to-screen offset
-        offset_x = (heightmap_left_offset - 12 + 4) * 16
-        offset_y = (heightmap_top_offset - 11 + 4) * 16
+        offset_x = (heightmap_left_offset - 8) * 16
+        offset_y = (heightmap_top_offset - 8) * 16
         
         # Convert to isometric screen coordinates
         iso_x, iso_y = cartesian_to_iso(
@@ -260,8 +260,8 @@ class Hero(Drawable):
         )
         
         # Apply hero sprite positioning (32 pixels tall)
-        self._screen_pos.x = iso_x - 16 - camera_x
-        self._screen_pos.y = iso_y - self._world_pos.z + 12 - camera_y + 32
+        self._screen_pos.x = iso_x - camera_x
+        self._screen_pos.y = iso_y - self._world_pos.z - camera_y + 32
     
     def grab_entity(self, entity: 'Entity') -> None:
         """Start grabbing an entity
