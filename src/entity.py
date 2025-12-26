@@ -89,8 +89,7 @@ class Entity(Drawable):
             cls._sprite_properties_cache[sprite_id] = None
             return None
     
-    @classmethod
-    def _get_sprite_info(cls, sprite_id: int) -> Optional[Tuple[str, int, int]]:
+    def _get_sprite_info(self, sprite_id: int) -> Optional[Tuple[str, int, int]]:
         """Get sprite file path, frame width, and frame count from sprite properties
         
         Args:
@@ -99,7 +98,7 @@ class Entity(Drawable):
         Returns:
             Tuple of (sprite_file_path, frame_width, frame_count) or None if not found
         """
-        sprite_props = cls._load_sprite_properties(sprite_id)
+        sprite_props = self._load_sprite_properties(sprite_id)
         if sprite_props is None:
             print(f"  _get_sprite_info: Could not load sprite properties for sprite ID {sprite_id}")
             return None
@@ -110,8 +109,15 @@ class Entity(Drawable):
             print(f"  _get_sprite_info: No Label found in sprite properties for sprite ID {sprite_id}")
             return None
         
-        # Construct sprite file path: data/sprites/SpriteGfxXXXAnim000.png
-        sprite_file = f"data/sprites/{label}Anim000.png"
+        # Determine animation number based on orientation
+        # NW and NE use Anim000, SE and SW use Anim001
+        anim_num = "000"
+        if self.orientation in ["SE", "SW"]:
+            anim_num = "001"
+        
+        # Construct sprite file path: data/sprites/SpriteGfxXXXAnimXXX.png
+        sprite_file = f"data/sprites/{label}Anim{anim_num}.png"
+        print(f"  _get_sprite_info: Using animation {anim_num} for orientation {self.orientation}")
         
         # Get hitbox to determine frame width
         hitbox = sprite_props.get('Hitbox', {})
