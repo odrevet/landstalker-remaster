@@ -14,7 +14,7 @@ from heightmap import Heightmap, HeightmapCell
 from debug import draw_heightmap, draw_warps, draw_boundbox
 from collision import (resolve_entity_collision, get_entity_top_at_position, check_collids_entity, get_entity_hero_is_standing_on, 
                       get_entity_in_front_of_hero, can_place_entity_at_position, get_position_in_front_of_hero, get_touching_entities,
-                      update_carried_positions)
+                      update_carried_positions, check_entity_collision_3d)
 from script_commands import run_entity_script
 from menu_screen import MenuScreen
 
@@ -150,8 +150,11 @@ class Game:
         # Validate and fix hero spawn position
         self.fix_hero_spawn_position()
         
+        self.check_initial_entity_collision()
+
         # Center camera on hero initially
         self.center_camera_on_hero()
+        
     
     def play_room_bgm(self):
         bgm_name = self.room.room_properties["RoomBGM"]
@@ -452,6 +455,9 @@ class Game:
                         # Reset previous tile tracking after warp to prevent immediate re-warp
                         self.prev_hero_tile_x = dest_tile_x
                         self.prev_hero_tile_y = dest_tile_y
+
+                        self.check_hero_spawn_on_entity()
+                        self.check_initial_entity_collision()
 
                     # start fade which will call do_warp at full-black
                     self.start_fade(do_warp)
@@ -1031,6 +1037,52 @@ class Game:
         
         pygame.display.flip()
 
+
+    def check_hero_spawn_on_entity(self) -> None:
+        """Fix hero Z position if spawned inside/below an entity
+        
+        When warping, hero may spawn at tile height but should be on top of entities.
+        """
+        tile_h: int = self.room.data.tileheight
+        
+        # Get hero's current position and bbox
+        hero_pos = self.hero.get_world_pos()
+        hero_bbox = self.hero.get_bounding_box(tile_h)
+        hero_x, hero_y, hero_w, hero_h = hero_bbox
+        
+
+        for entity in self.room.entities:
+            if check_entity_collision_3d(self.hero.bbox, entity.bbox, tile_h):
+                print(f"Collids with entity {entity.name}")
+                self.hero.set_world_z(8)
+                
+    def check_initial_entity_collision(self) -> None:
+        """Check for entity collisions immediately after spawn/warp
+        
+        This handles the case where hero spawns already standing on an entity
+        that should trigger a script (like a raft).
+        """
+
+        tile_h: int = self.room.data.tileheight
+        
+        # Get entities hero is currently standing on
+        hero_bbox = self.hero.get_bounding_box(tile_h)
+        hero_x, hero_y, hero_w, hero_h = hero_bbox
+        hero_z = self.hero.get_world_pos().z
+        
+        entities_to_check = [e for e in self.room.entities 
+                            if e is not self.hero.grabbed_entity]
+        
+        entity_standing_on = get_entity_hero_is_standing_on(
+            self.hero,
+            entities_to_check,
+            tile_h
+        )
+        
+        if entity_standing_on is not None:
+            print(f"Hero spawned standing on {entity_standing_on.name}")
+            self.on_entity_collids(entity_standing_on)
+
     def run(self) -> None:
         """Main game loop"""
         running: bool = True
@@ -1087,7 +1139,7 @@ class Game:
                     self.camera_x,
                     self.camera_y
                 )
-                self.center_camera_on_hero()
+                #self.center_camera_on_hero()
 
                 for entity in self.room.entities:
                     if hasattr(entity, 'script_handler') and entity.script_handler.is_running:
