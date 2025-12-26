@@ -424,11 +424,24 @@ class Game:
         
         for warp in self.room.warps:
             if warp.check_collision(hero_x, hero_y, hero_width, hero_height, tile_h, self.room.room_number, self.room.heightmap):
+                current_room_number = self.room_number
                 target_room: int = warp.get_target_room(self.room_number)
+
                 
                 if target_room != self.room_number:
                     # define warp callback to execute while screen is black
                     def do_warp():
+                        # PATCH FIXEME disable warp from 168 to 167
+                        print(f"{current_room_number} {target_room}")
+                        if current_room_number == 168 and target_room == 167:
+                            print("raft: skip warp back to 167")
+                            return False
+
+                        # PATCH FIXEME disable warp from 169 to 168
+                        if current_room_number == 169 and target_room == 168:
+                            print("raft: skip warp back to 168")
+                            return False
+
                         self.room_number = target_room
                         current_bgm = self.room.room_properties["RoomBGM"]
                         self.room.load(self.room_number)
@@ -439,6 +452,12 @@ class Game:
                         dest_tile_x, dest_tile_y = warp.get_destination(self.room_number, self.room.heightmap)
                         dest_cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(dest_tile_x, dest_tile_y)
                         dest_tile_z: int = dest_cell.height if dest_cell else 0
+
+                        # PATCH FIXEME Adjust defination in raft sequance
+                        if self.room_number == 168 or self.room_number == 169:
+                            print("Warp: adjust warp")
+                            dest_tile_x -= 1
+                            dest_tile_y += 1
 
                         self.hero.set_world_pos(
                             dest_tile_x * tile_h, dest_tile_y * tile_h, dest_tile_z * tile_h,
@@ -508,6 +527,20 @@ class Game:
         right_y: int = int(corners[2][1] // tile_h)
         top_x: int = int(corners[3][0] // tile_h)
         top_y: int = int(corners[3][1] // tile_h)
+        
+        # Get map dimensions for bounds checking
+        map_width: int = self.room.heightmap.get_width()
+        map_height: int = self.room.heightmap.get_height()
+        
+        # Clamp coordinates to valid range
+        left_x = max(0, min(left_x, map_width - 1))
+        left_y = max(0, min(left_y, map_height - 1))
+        bottom_x = max(0, min(bottom_x, map_width - 1))
+        bottom_y = max(0, min(bottom_y, map_height - 1))
+        right_x = max(0, min(right_x, map_width - 1))
+        right_y = max(0, min(right_y, map_height - 1))
+        top_x = max(0, min(top_x, map_width - 1))
+        top_y = max(0, min(top_y, map_height - 1))
         
         # Check if hero is above ground
         if not self.hero.is_jumping:
