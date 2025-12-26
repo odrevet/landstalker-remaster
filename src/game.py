@@ -1077,6 +1077,18 @@ class Game:
                 self.check_warp_collision()
                 self.check_fall()
                 
+                for entity in self.room.entities:
+                    if hasattr(entity, 'script_handler') and entity.script_handler.is_running:
+                        entity.script_handler.update()
+                        
+                        # Update entity's screen position based on world position changes
+                        entity.update_camera(
+                            self.room.heightmap.left_offset,
+                            self.room.heightmap.top_offset,
+                            self.camera_x,
+                            self.camera_y
+                        )
+
                 # Update and render game
                 self.update_hud()
                 self.manager.update(time_delta)
