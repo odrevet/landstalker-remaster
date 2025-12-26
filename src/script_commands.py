@@ -37,6 +37,7 @@ class ScriptCommands:
             'TurnCW': self.cmd_turn_cw,
             'TurnCCW': self.cmd_turn_ccw,
             'TurnToFace': self.cmd_turn_to_face,
+            'TurnSENoUpdate': self.TurnSENoUpdate,
             
             # Timing commands
             'Pause': self.cmd_pause,
@@ -204,6 +205,10 @@ class ScriptCommands:
         self.entity.orientation = rotation.get(current, current)
         return True
     
+    def TurnSENoUpdate(self, params: Dict[str, Any] = None) -> bool:
+        self.entity.orientation = 'SE'
+        return True
+
     def cmd_turn_to_face(self, params: Dict[str, Any]) -> bool:
         """Turn entity to face a specific direction or target
         
