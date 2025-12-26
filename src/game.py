@@ -13,7 +13,8 @@ from room import Room
 from heightmap import Heightmap, HeightmapCell
 from debug import draw_heightmap, draw_warps, draw_boundbox
 from collision import (resolve_entity_collision, get_entity_top_at_position, check_collids_entity, get_entity_hero_is_standing_on, 
-                      get_entity_in_front_of_hero, can_place_entity_at_position, get_position_in_front_of_hero, get_touching_entities)
+                      get_entity_in_front_of_hero, can_place_entity_at_position, get_position_in_front_of_hero, get_touching_entities,
+                      update_carried_positions)
 from script_commands import run_entity_script
 from menu_screen import MenuScreen
 
@@ -1077,6 +1078,16 @@ class Game:
                 self.check_warp_collision()
                 self.check_fall()
                 
+                update_carried_positions(
+                    self.hero,
+                    self.room.entities,
+                    16,
+                    self.room.heightmap.left_offset,
+                    self.room.heightmap.top_offset,
+                    self.camera_x,
+                    self.camera_y
+                )
+
                 for entity in self.room.entities:
                     if hasattr(entity, 'script_handler') and entity.script_handler.is_running:
                         entity.script_handler.update()

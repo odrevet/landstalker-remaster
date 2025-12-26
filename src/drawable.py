@@ -40,6 +40,21 @@ class Drawable:
         self.animation_speed: float = 0.15  # Default animation speed
         self.animation_timer: float = 0.0
     
+        self.prev_world_pos = Vector3(x, y, z)
+
+    def get_position_delta(self) -> tuple:
+        """Get the change in position since last frame"""
+        dx = self._world_pos.x - self.prev_world_pos.x
+        dy = self._world_pos.y - self.prev_world_pos.y
+        dz = self._world_pos.z - self.prev_world_pos.z
+        return (dx, dy, dz)
+
+    def update_prev_position(self) -> None:
+        """Store current position for next frame's delta calculation"""
+        self.prev_world_pos.x = self._world_pos.x
+        self.prev_world_pos.y = self._world_pos.y
+        self.prev_world_pos.z = self._world_pos.z
+
     def get_world_pos(self) -> Vector3:
         """Get the object's world position
         

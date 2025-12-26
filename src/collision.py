@@ -248,6 +248,68 @@ def get_entity_hero_is_standing_on(hero: Hero,
     
     return highest_entity
     
+def update_carried_positions(hero, entities, tile_h, 
+                            heightmap_left_offset, heightmap_top_offset,
+                            camera_x, camera_y):
+    """Move hero/entities that are standing on moving entities"""
+    
+    # Check if hero is standing on an entity
+    standing_on = get_entity_hero_is_standing_on(hero, entities, tile_h)
+    if standing_on:
+        dx, dy, dz = standing_on.get_position_delta()
+        if dx != 0 or dy != 0 or dz != 0:
+            hero_pos = hero.get_world_pos()
+            hero.set_world_pos(
+                hero_pos.x + dx,
+                hero_pos.y + dy, 
+                hero_pos.z + dz,
+                heightmap_left_offset,
+                heightmap_top_offset,
+                camera_x,
+                camera_y
+            )
+            # Update grabbed entity too
+            if hero.is_grabbing:
+                hero.update_grabbed_entity_position(
+                    heightmap_left_offset, heightmap_top_offset,
+                    camera_x, camera_y, tile_h
+                )
+    
+    # Check each entity standing on other entities
+    for entity in entities:
+        standing_on = get_entity_top_at_position(
+            [e for e in entities if e is not entity],
+            *entity.get_bounding_box(tile_h),
+            entity.get_world_pos().z,
+            tile_h
+        )
+        if standing_on is not None:
+            # Find which entity has this top height
+            for other in entities:
+                if other is entity:
+                    continue
+                other_pos = other.get_world_pos()
+                other_height = other.height * tile_h if hasattr(other, 'height') else tile_h
+                if abs((other_pos.z + other_height) - standing_on) < 1.0:
+                    dx, dy, dz = other.get_position_delta()
+                    if dx != 0 or dy != 0 or dz != 0:
+                        entity_pos = entity.get_world_pos()
+                        entity.set_world_pos(
+                            entity_pos.x + dx,
+                            entity_pos.y + dy,
+                            entity_pos.z + dz,
+                            heightmap_left_offset,
+                            heightmap_top_offset,
+                            camera_x,
+                            camera_y
+                        )
+                    break
+    
+    # Update all prev positions for next frame
+    hero.update_prev_position()
+    for entity in entities:
+        entity.update_prev_position()
+
 def get_position_in_front_of_hero(hero: Hero, tile_h: int) -> Tuple[float, float]:
     """Get the position one tile in front of the hero based on facing direction
     
