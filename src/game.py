@@ -1132,18 +1132,12 @@ class Game:
                 break
   
             if self.menu_active:
-                # Scale menu surface to screen
-                screen_w, screen_h = self.screen.get_size()
-                scale = min(screen_w / DISPLAY_WIDTH, screen_h / DISPLAY_HEIGHT)
-                scaled_w = int(DISPLAY_WIDTH * scale)
-                scaled_h = int(DISPLAY_HEIGHT * scale)
-                scaled_surface = pygame.transform.scale(self.surface, (scaled_w, scaled_h))
+                # Menu mode - handle menu input
+                self.menu_active = self.menu_screen.handle_input(keys, self.prev_keys)
+                self.menu_screen.update(time_delta)
                 
-                offset_x = (screen_w - scaled_w) // 2
-                offset_y = (screen_h - scaled_h) // 2
-                self.screen.fill((0, 0, 0))
-                self.screen.blit(scaled_surface, (offset_x, offset_y))
-                pygame.display.flip()
+                # Render menu
+                self.menu_screen.render(self.surface)
 
             if self.display_dialog:
                 # Show dialog elements
@@ -1172,13 +1166,28 @@ class Game:
                 self.check_warp_collision()  # Check for warps after movement
                 self.check_fall()
             
-            # Update
-            self.update_hud()
-            self.manager.update(time_delta)
-            # Update fade (must be after manager.update so UI changes are visible under fade)
-            self.update_fade(time_delta)
-            # Render
-            self.render()
+            if self.menu_active:
+                # Scale menu surface to screen
+                screen_w, screen_h = self.screen.get_size()
+                scale = min(screen_w / DISPLAY_WIDTH, screen_h / DISPLAY_HEIGHT)
+                scaled_w = int(DISPLAY_WIDTH * scale)
+                scaled_h = int(DISPLAY_HEIGHT * scale)
+                scaled_surface = pygame.transform.scale(self.surface, (scaled_w, scaled_h))
+                
+                offset_x = (screen_w - scaled_w) // 2
+                offset_y = (screen_h - scaled_h) // 2
+                self.screen.fill((0, 0, 0))
+                self.screen.blit(scaled_surface, (offset_x, offset_y))
+                pygame.display.flip()
+            else:
+                # Update
+                self.update_hud()
+                self.manager.update(time_delta)
+                # Update fade (must be after manager.update so UI changes are visible under fade)
+                self.update_fade(time_delta)
+                # Render
+                self.render()
+
             # Store current key states for next frame
             self.prev_keys = {k: keys[k] for k in [pygame.K_RETURN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_a, pygame.K_F1, pygame.K_F2, pygame.K_F3]}
         
