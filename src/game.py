@@ -1132,68 +1132,6 @@ class Game:
                 break
   
             if self.menu_active:
-                # Menu mode - handle menu input
-                self.menu_active = self.menu_screen.handle_input(keys, self.prev_keys)
-                self.menu_screen.update(time_delta)
-                
-                # Render menu
-                self.menu_screen.render(self.surface)
-                
-            elif self.display_dialog:
-                # Dialog mode
-                self.dialog_textbox.show()
-                self.coord_dialog.show()
-                
-                # Wait for action key to dismiss dialog
-                if keys[pygame.K_a] and not self.prev_keys.get(pygame.K_a, False):
-                    self.display_dialog = False
-                    self.dialog_textbox.hide()
-                    self.coord_dialog.hide()
-            else:
-                # Normal gameplay controls
-                self.dialog_textbox.hide()
-                self.coord_dialog.hide()
-
-                self.handle_camera_movement(keys)
-                self.handle_debug_toggles(keys)
-                self.apply_gravity()
-                self.handle_hero_movement(keys)
-                self.handle_jump(keys)
-                self.check_action(keys)
-                self.check_warp_collision()
-                self.check_fall()
-                
-                update_carried_positions(
-                    self.hero,
-                    self.room.entities,
-                    16,
-                    self.room.heightmap.left_offset,
-                    self.room.heightmap.top_offset,
-                    self.camera_x,
-                    self.camera_y
-                )
-                #self.center_camera_on_hero()
-
-                for entity in self.room.entities:
-                    if hasattr(entity, 'script_handler') and entity.script_handler.is_running:
-                        entity.script_handler.update()
-                        
-                        # Update entity's screen position based on world position changes
-                        entity.update_camera(
-                            self.room.heightmap.left_offset,
-                            self.room.heightmap.top_offset,
-                            self.camera_x,
-                            self.camera_y
-                        )
-
-                # Update and render game
-                self.update_hud()
-                self.manager.update(time_delta)
-                self.update_fade(time_delta)
-                self.render()
-            
-            # Scale and display (always render to screen)
-            if self.menu_active:
                 # Scale menu surface to screen
                 screen_w, screen_h = self.screen.get_size()
                 scale = min(screen_w / DISPLAY_WIDTH, screen_h / DISPLAY_HEIGHT)
@@ -1206,11 +1144,43 @@ class Game:
                 self.screen.fill((0, 0, 0))
                 self.screen.blit(scaled_surface, (offset_x, offset_y))
                 pygame.display.flip()
+
+            if self.display_dialog:
+                # Show dialog elements
+                self.dialog_textbox.show()
+                self.coord_dialog.show()
+                
+                # Wait for action key to dismiss dialog
+                if keys[pygame.K_a] and not self.prev_keys.get(pygame.K_a, False):
+                    self.display_dialog = False
+                    self.dialog_textbox.hide()
+                    self.coord_dialog.hide()
+            else:
+                # Hide dialog elements
+                self.dialog_textbox.hide()
+                self.coord_dialog.hide()
+
+                # Normal gameplay controls
+                self.handle_camera_movement(keys)
+                self.handle_debug_toggles(keys)
+                self.apply_gravity()
+                self.handle_hero_movement(keys)
+
+                self.handle_jump(keys)
+                self.check_action(keys)
+                # warp/fall checks will now start fades; they return True if a fade initiated
+                self.check_warp_collision()  # Check for warps after movement
+                self.check_fall()
             
+            # Update
+            self.update_hud()
+            self.manager.update(time_delta)
+            # Update fade (must be after manager.update so UI changes are visible under fade)
+            self.update_fade(time_delta)
+            # Render
+            self.render()
             # Store current key states for next frame
-            self.prev_keys = {k: keys[k] for k in [pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT, 
-                                                     pygame.K_a, pygame.K_b, pygame.K_RETURN,
-                                                     pygame.K_F1, pygame.K_F2, pygame.K_F3]}
+            self.prev_keys = {k: keys[k] for k in [pygame.K_RETURN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_a, pygame.K_F1, pygame.K_F2, pygame.K_F3]}
         
         pygame.quit()
         sys.exit()
