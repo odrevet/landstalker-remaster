@@ -12,7 +12,7 @@
         "misc":
         {
             "shape": "rounded_rectangle",
-            "shape_corner_radius": "10",
+            "shape_corner_radius": "4",
             "border_width": "2",
             "padding": "1,0"
         }
