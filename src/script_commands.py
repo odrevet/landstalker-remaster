@@ -25,6 +25,7 @@ class ScriptCommands:
         self.pause_ticks_remaining = 0
         self.one_shot = False
         self.has_been_triggered = False  # Track if one-shot script has run
+        self.speed_multiplier = 1.0  # Speed multiplier for movement commands
         
         # Command dispatcher - maps command names to handler methods
         self.command_handlers = {
@@ -42,6 +43,9 @@ class ScriptCommands:
             # Timing commands
             'Pause': self.cmd_pause,
             'Pause4s': self.cmd_pause_4s,
+            
+            # Speed commands
+            'FastSpeed': self.cmd_fast_speed,
             
             # Action commands
             'PlayAnimation': self.cmd_play_animation,
@@ -91,15 +95,15 @@ class ScriptCommands:
             dx, dy = direction_map.get(orientation, (0.0, 0.0))
             
             # Calculate target position
-            target_x = self.entity.get_world_pos().x + (dx * 16 * distance)
-            target_y = self.entity.get_world_pos().y + (dy * 16 * distance)
+            target_x = self.entity.get_world_pos().x + (dx * 16 * distance * self.speed_multiplier)
+            target_y = self.entity.get_world_pos().y + (dy * 16 * distance * self.speed_multiplier)
             
             self.current_command_state = {
                 'target_x': target_x,
                 'target_y': target_y,
                 'dx': dx,
                 'dy': dy,
-                'speed': 1.0  # pixels per frame
+                'speed': 1.0 * self.speed_multiplier
             }
             
             print(f"  [START] MoveRelative: distance={distance} tiles, target=({target_x:.1f}, {target_y:.1f})")
@@ -255,6 +259,18 @@ class ScriptCommands:
         """
         # Assuming 60 FPS
         return self.cmd_pause({'Ticks': 240})
+    
+    # === Speed Commands ===
+    
+    def cmd_fast_speed(self, params: Optional[Dict[str, Any]] = None) -> bool:
+        """Double the movement speed for subsequent movement commands
+        
+        Returns:
+            True (instant command)
+        """
+        self.speed_multiplier = 3
+        print(f"  [EXEC] FastSpeed: speed multiplier set to {self.speed_multiplier}x")
+        return True
     
     # === Action Commands ===
     
