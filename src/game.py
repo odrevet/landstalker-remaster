@@ -1087,6 +1087,7 @@ class Game:
                     self.camera_x,
                     self.camera_y
                 )
+                self.center_camera_on_hero()
 
                 for entity in self.room.entities:
                     if hasattr(entity, 'script_handler') and entity.script_handler.is_running:
