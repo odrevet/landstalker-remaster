@@ -1021,7 +1021,7 @@ class Game:
         """Display a dialog by ID"""       
         self.current_dialog_id = dialog_id
         self.display_dialog = True
-        self.dialog_textbox.set_text(self.compressed_strings[0])
+        self.dialog_textbox.set_text(self.compressed_strings[dialog_id])
 
     def render(self) -> None:
         self.surface.fill((0, 0, 0))
