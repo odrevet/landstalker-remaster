@@ -390,7 +390,11 @@ class Entity(Drawable):
         """
         # Only draw sprite if it exists and is visible
         if self.image and self.visible and not self.sprite_missing:
-            surface.blit(self.image, self._screen_pos)
+            display_image = self.image
+            if self.orientation in ("SE", "NW"):
+                display_image = pygame.transform.flip(self.image, True, False)
+            
+            surface.blit(display_image, self._screen_pos)
 
     def is_crate(self) -> bool:
         """Check if entity is a crate"""
