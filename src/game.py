@@ -94,7 +94,7 @@ class Game:
         self.dialog_bip_base_frequency = 800  # Base frequency in Hz
         self.dialog_bip_pitch = 1.0  # Pitch multiplier (1.0 = normal, 0.5 = lower, 2.0 = higher)
         self.dialog_bip_sound = self.generate_bip_sound(self.dialog_bip_base_frequency)
-        self.dialog_bip_sound.set_volume(0.3)
+        self.dialog_bip_sound.set_volume(0.3)  # Adjust volume as needed
 
         # Debug flags
         self.is_height_map_displayed: bool = False
@@ -960,7 +960,7 @@ class Game:
             if entity is not None: 
                 # handle dialog
                 if entity.has_dialogue == True:
-                    self.show_dialog(entity.dialogue)
+                    self.show_dialog(entity.dialogue, entity)
                     return
                 elif entity.no_pickup == False:
                     # Try to grab an entity
@@ -1075,10 +1075,35 @@ class Game:
             string_id = script[0]["String"]
             self.dialog_textbox.set_text(f"String ID: {string_id}")
 
-    def show_dialog(self, dialog_id: int) -> None:
-        """Display a dialog by ID with typing effect"""       
+    def show_dialog(self, dialog_id: int, entity = None) -> None:
+        """Display a dialog by ID with typing effect
+        
+        Args:
+            dialog_id: The dialog ID to display
+            entity: The entity speaking (optional, used for voice pitch)
+        """       
         self.current_dialog_id = dialog_id
         self.display_dialog = True
+        
+        # Set pitch based on entity's talk_sound_fx if available
+        if entity and hasattr(entity, 'talk_sound_fx'):
+            # Map talk_sound_fx (69-72) to pitch
+            # 69 = highest pitch (1.5x)
+            # 70 = high pitch (1.2x)
+            # 71 = low pitch (0.8x)
+            # 72 = lowest pitch (0.6x)
+            pitch_map = {
+                69: 1.5,   # Highest pitch
+                70: 1.2,   # High pitch
+                71: 0.8,   # Low pitch
+                72: 0.6    # Lowest pitch
+            }
+            pitch = pitch_map.get(entity.talk_sound_fx, 1.0)
+            self.set_dialog_bip_pitch(pitch)
+            print(f"Entity {entity.name} talk_sound_fx={entity.talk_sound_fx}, pitch={pitch}")
+        else:
+            # Default pitch
+            self.set_dialog_bip_pitch(1.0)
         
         # Set up typing effect
         self.dialog_full_text = "This is a work in progress"
