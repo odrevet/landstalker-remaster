@@ -22,8 +22,8 @@ from menu_screen import MenuScreen
 DISPLAY_HEIGHT: int = 224
 DISPLAY_WIDTH: int = 320
 CAMERA_SPEED: int = 5
-GRAVITY: float = 2.5
-HERO_SPEED: float = 1.75
+GRAVITY: float = 3.0
+HERO_SPEED: float = 2.00
 HERO_MAX_JUMP: int = 24
 FPS: int = 60
 
