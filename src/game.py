@@ -82,6 +82,20 @@ class Game:
         self.main_scripts: dict = self.load_main_scripts("data/script.yaml")
         self.compressed_strings: list[str] = self.load_compressed_strings("data/compressed_strings.txt")
 
+        # Dialog typing effect variables
+        self.dialog_full_text: str = ""           # Full text to display
+        self.dialog_current_text: str = ""        # Currently displayed text
+        self.dialog_char_index: int = 0           # Current character position
+        self.dialog_char_timer: float = 0.0       # Timer for next character
+        self.dialog_char_delay: float = 0.05      # Delay between characters (seconds)
+        self.dialog_finished: bool = False        # Whether typing is complete
+
+        # Generate dialog bip sound procedurally
+        self.dialog_bip_base_frequency = 800  # Base frequency in Hz
+        self.dialog_bip_pitch = 1.0  # Pitch multiplier (1.0 = normal, 0.5 = lower, 2.0 = higher)
+        self.dialog_bip_sound = self.generate_bip_sound(self.dialog_bip_base_frequency)
+        self.dialog_bip_sound.set_volume(0.3)
+
         # Debug flags
         self.is_height_map_displayed: bool = False
         self.is_boundbox_displayed: bool = False
@@ -155,6 +169,50 @@ class Game:
         # Center camera on hero initially
         self.center_camera_on_hero()
         
+    
+    def generate_bip_sound(self, base_frequency: float, duration: float = 0.05) -> pygame.mixer.Sound:
+        """Generate a procedural bip sound with adjustable pitch
+        
+        Args:
+            base_frequency: Base frequency in Hz (e.g., 800)
+            duration: Duration of the sound in seconds (default: 0.05)
+        
+        Returns:
+            pygame.mixer.Sound object
+        """
+        import numpy as np
+        
+        sample_rate = 22050
+        frequency = base_frequency * self.dialog_bip_pitch
+        
+        # Generate time array
+        t = np.linspace(0, duration, int(sample_rate * duration))
+        
+        # Create sine wave with exponential envelope to avoid clicks
+        envelope = np.exp(-t * 20)  # Exponential decay
+        wave = np.sin(2 * np.pi * frequency * t) * envelope
+        
+        # Convert to 16-bit PCM format
+        wave = (wave * 32767).astype(np.int16)
+        
+        # Create stereo sound (duplicate mono to both channels)
+        stereo_wave = np.column_stack((wave, wave))
+        
+        # Create pygame Sound from numpy array
+        sound = pygame.sndarray.make_sound(stereo_wave)
+        
+        return sound
+    
+    def set_dialog_bip_pitch(self, pitch: float) -> None:
+        """Set the pitch of the dialog bip sound
+        
+        Args:
+            pitch: Pitch multiplier (1.0 = normal, 0.5 = lower, 2.0 = higher)
+        """
+        self.dialog_bip_pitch = pitch
+        # Regenerate the sound with new pitch
+        self.dialog_bip_sound = self.generate_bip_sound(self.dialog_bip_base_frequency)
+        self.dialog_bip_sound.set_volume(0.3)
     
     def play_room_bgm(self):
         bgm_name = self.room.room_properties["RoomBGM"]
@@ -1018,10 +1076,45 @@ class Game:
             self.dialog_textbox.set_text(f"String ID: {string_id}")
 
     def show_dialog(self, dialog_id: int) -> None:
-        """Display a dialog by ID"""       
+        """Display a dialog by ID with typing effect"""       
         self.current_dialog_id = dialog_id
         self.display_dialog = True
-        self.dialog_textbox.set_text(self.compressed_strings[dialog_id])
+        
+        # Set up typing effect
+        self.dialog_full_text = "This is a work in progress"
+        self.dialog_current_text = ""
+        self.dialog_char_index = 0
+        self.dialog_char_timer = 0.0
+        self.dialog_finished = False
+        
+        self.dialog_textbox.set_text("")
+    
+    def update_dialog_typing(self, dt: float) -> None:
+        """Update dialog typing effect"""
+        if not self.display_dialog or self.dialog_finished:
+            return
+        
+        # Update timer
+        self.dialog_char_timer += dt
+        
+        # Check if it's time to add next character
+        if self.dialog_char_timer >= self.dialog_char_delay:
+            self.dialog_char_timer = 0.0
+            
+            if self.dialog_char_index < len(self.dialog_full_text):
+                # Add next character
+                self.dialog_current_text += self.dialog_full_text[self.dialog_char_index]
+                self.dialog_char_index += 1
+                
+                # Play bip sound (but not for spaces)
+                if self.dialog_bip_sound and self.dialog_full_text[self.dialog_char_index - 1] != ' ':
+                    self.dialog_bip_sound.play()
+                
+                # Update textbox
+                self.dialog_textbox.set_text(self.dialog_current_text)
+            else:
+                # Typing finished
+                self.dialog_finished = True
 
     def render(self) -> None:
         self.surface.fill((0, 0, 0))
@@ -1144,11 +1237,22 @@ class Game:
                 self.dialog_textbox.show()
                 self.coord_dialog.show()
                 
+                # Update typing effect
+                self.update_dialog_typing(time_delta)
+                
                 # Wait for action key to dismiss dialog
                 if keys[pygame.K_a] and not self.prev_keys.get(pygame.K_a, False):
-                    self.display_dialog = False
-                    self.dialog_textbox.hide()
-                    self.coord_dialog.hide()
+                    # If typing not finished, skip to end
+                    if not self.dialog_finished:
+                        self.dialog_current_text = self.dialog_full_text
+                        self.dialog_char_index = len(self.dialog_full_text)
+                        self.dialog_finished = True
+                        self.dialog_textbox.set_text(self.dialog_current_text)
+                    else:
+                        # Dismiss dialog
+                        self.display_dialog = False
+                        self.dialog_textbox.hide()
+                        self.coord_dialog.hide()
             else:
                 # Hide dialog elements
                 self.dialog_textbox.hide()
