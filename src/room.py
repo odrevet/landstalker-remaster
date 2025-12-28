@@ -179,6 +179,8 @@ class Room:
                 # Get the tile image
                 tile_image: pygame.Surface = self.data.get_tile_image_by_gid(gid)
                 
+                tile_image = tile_image.convert_alpha()
+                
                 # Get the tile dimensions
                 tile_width: int
                 tile_height: int
@@ -213,6 +215,8 @@ class Room:
                 for index, (sub_tile, offset) in enumerate(zip(tiles_rect, offsets)):
                     tile: Tile = Tile(offset)
                     tile.image = tile_image.subsurface(sub_tile)
+                    
+                    tile.image = tile.image.convert_alpha()
 
                     # tile.is_hflipped = tile_properties.get(f"isHFlipped{index}", False)
                     # tile.is_vflipped = tile_properties.get(f"isVFlipped{index}", False)
