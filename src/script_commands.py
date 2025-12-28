@@ -51,6 +51,7 @@ class ScriptCommands:
             'PlaySound': self.cmd_play_sound,
             'SetVisible': self.cmd_set_visible,
             'SetSolid': self.cmd_set_solid,
+            'EnableGravity': self.cmd_enable_gravity,
             
             # Dialog/Interaction commands
             'ShowDialog': self.cmd_show_dialog,
@@ -309,8 +310,7 @@ class ScriptCommands:
         Returns:
             True (instant command)
         """
-        visible = params.get('Visible', True)
-        print(f"  [STUB] SetVisible: visible={visible}")
+        self.entity.visible = params.get('Visible', True)
         return True
     
     def cmd_set_solid(self, params: Dict[str, Any]) -> bool:
@@ -322,8 +322,15 @@ class ScriptCommands:
         Returns:
             True (instant command)
         """
-        solid = params.get('Solid', True)
-        print(f"  [STUB] SetSolid: solid={solid}")
+        self.entity.visible = params.get('Solid', True)
+        return True
+
+    def cmd_enable_gravity(self, params: Dict[str, Any] = None) -> bool:
+        """Set entity gravity state
+        Returns:
+            True (instant command)
+        """
+        self.entity.gravity = True
         return True
     
     # === Dialog/Interaction Commands ===
