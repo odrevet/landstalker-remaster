@@ -339,9 +339,15 @@ class Game:
                 if event.key == pygame.K_F11:
                     # Toggle fullscreen
                     self.toggle_fullscreen()
-                elif event.key == pygame.K_RETURN:
-                    # Toggle menu
-                    self.menu_active = not self.menu_active
+                elif event.key == pygame.K_RETURN and not self.display_dialog:
+                    # Toggle menu (only if not in dialog)
+                    # Use key-just-pressed check to prevent double-trigger
+                    if not self.prev_keys.get(pygame.K_RETURN, False):
+                        self.menu_active = not self.menu_active
+                elif event.key == pygame.K_b and not self.display_dialog:
+                    # Toggle menu with B key (only if not in dialog)
+                    if not self.prev_keys.get(pygame.K_b, False):
+                        self.menu_active = not self.menu_active
             
             # Process events for appropriate manager
             if self.menu_active:
@@ -1074,8 +1080,8 @@ class Game:
         self.dialog_textbox.hide()
         self.coord_dialog.hide()
         
-        # Recreate menu screen
-        self.menu_screen = MenuScreen(self.display_width, self.display_height)
+        # Recreate menu screen with new dimensions
+        self.menu_screen.recreate_for_resolution(self.display_width, self.display_height)
         
         # Recalculate scaling
         self._update_scaling()
@@ -1336,25 +1342,54 @@ class Game:
         running: bool = True
         while running:
             time_delta: float = self.clock.tick(FPS) / 1000.0
+            
             # Handle events
             running = self.handle_events()
             if not running:
                 break
+            
             # Get key states
             keys: pygame.key.ScancodeWrapper = pygame.key.get_pressed()
+            
             # Exit on Escape
             if keys[pygame.K_ESCAPE]:
                 break
   
+            # === MENU MODE ===
             if self.menu_active:
-                # Menu mode - handle menu input
+                # Only handle menu input and updates
                 self.menu_active = self.menu_screen.handle_input(keys, self.prev_keys)
                 self.menu_screen.update(time_delta)
                 
-                # Render menu
+                # Render game in background (frozen state)
+                self.surface.fill((0, 0, 0))
+                self.room.draw(self.surface, self.camera_x, self.camera_y, self.hero,
+                               self.display_width, self.display_height)
+                
+                # Darken the game background
+                dark_overlay = pygame.Surface((self.display_width, self.display_height))
+                dark_overlay.fill((0, 0, 0))
+                dark_overlay.set_alpha(128)  # 50% transparent
+                self.surface.blit(dark_overlay, (0, 0))
+                
+                # Render menu on top
                 self.menu_screen.render(self.surface)
-
-            if self.display_dialog:
+                
+                # Scale and display
+                screen_w, screen_h = self.screen.get_size()
+                scale = min(screen_w / self.display_width, screen_h / self.display_height)
+                scaled_w = int(self.display_width * scale)
+                scaled_h = int(self.display_height * scale)
+                scaled_surface = pygame.transform.scale(self.surface, (scaled_w, scaled_h))
+                
+                offset_x = (screen_w - scaled_w) // 2
+                offset_y = (screen_h - scaled_h) // 2
+                self.screen.fill((0, 0, 0))
+                self.screen.blit(scaled_surface, (offset_x, offset_y))
+                pygame.display.flip()
+                
+            # === DIALOG MODE ===
+            elif self.display_dialog:
                 # Show dialog elements
                 self.dialog_textbox.show()
                 self.coord_dialog.show()
@@ -1375,6 +1410,14 @@ class Game:
                         self.display_dialog = False
                         self.dialog_textbox.hide()
                         self.coord_dialog.hide()
+                
+                # Update and render
+                self.update_hud()
+                self.manager.update(time_delta)
+                self.update_fade(time_delta)
+                self.render()
+                
+            # === GAMEPLAY MODE ===
             else:
                 # Hide dialog elements
                 self.dialog_textbox.hide()
@@ -1386,13 +1429,14 @@ class Game:
                 self.handle_zoom(keys)
                 self.apply_gravity()
                 self.handle_hero_movement(keys)
-
                 self.handle_jump(keys)
                 self.check_action(keys)
-                # warp/fall checks will now start fades; they return True if a fade initiated
-                self.check_warp_collision()  # Check for warps after movement
+                
+                # Check for warps and falls
+                self.check_warp_collision()
                 self.check_fall()
             
+                # Update carried entities
                 update_carried_positions(
                     self.hero,
                     self.room.entities,
@@ -1403,9 +1447,11 @@ class Game:
                     self.camera_y
                 )
                 
+                # Auto-center camera if not in debug mode
                 if not self.debug_mode:
                     self.center_camera_on_hero()
 
+                # Update entity scripts
                 for entity in self.room.entities:
                     if hasattr(entity, 'script_handler') and entity.script_handler.is_running:
                         entity.script_handler.update()
@@ -1418,31 +1464,14 @@ class Game:
                             self.camera_y
                         )
 
-
-            if self.menu_active:
-                # Scale menu surface to screen
-                screen_w, screen_h = self.screen.get_size()
-                scale = min(screen_w / self.display_width, screen_h / self.display_height)
-                scaled_w = int(self.display_width * scale)
-                scaled_h = int(self.display_height * scale)
-                scaled_surface = pygame.transform.scale(self.surface, (scaled_w, scaled_h))
-                
-                offset_x = (screen_w - scaled_w) // 2
-                offset_y = (screen_h - scaled_h) // 2
-                self.screen.fill((0, 0, 0))
-                self.screen.blit(scaled_surface, (offset_x, offset_y))
-                pygame.display.flip()
-            else:
-                # Update
+                # Update and render
                 self.update_hud()
                 self.manager.update(time_delta)
-                # Update fade (must be after manager.update so UI changes are visible under fade)
                 self.update_fade(time_delta)
-                # Render
                 self.render()
 
             # Store current key states for next frame
-            self.prev_keys = {k: keys[k] for k in [pygame.K_RETURN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_a, pygame.K_F1, pygame.K_F2, pygame.K_F3]}
+            self.prev_keys = {k: keys[k] for k in [pygame.K_RETURN, pygame.K_b, pygame.K_ESCAPE, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_a, pygame.K_z, pygame.K_F1, pygame.K_F2, pygame.K_F3]}
         
         pygame.quit()
         sys.exit()

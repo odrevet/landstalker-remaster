@@ -1,10 +1,10 @@
 import pygame
 import pygame_gui
 from pygame_gui.elements.ui_text_box import UITextBox
-
+from typing import Optional
 
 class MenuScreen:
-    """Menu screen with HUD, main area, and footer sections"""
+    """Menu screen with HUD, main area, and footer sections styled like game HUD"""
     
     def __init__(self, display_width: int, display_height: int):
         """Initialize the menu screen
@@ -18,13 +18,13 @@ class MenuScreen:
         
         # Calculate section heights
         self.hud_height = 36  # Same as game HUD
-        self.footer_height = self.hud_height * 3  # 3 times HUD height
+        self.footer_height = 60
         self.main_height = display_height - self.hud_height - self.footer_height
         
         # GUI Manager for menu
         self.manager = pygame_gui.UIManager((display_width, display_height), "ui.json")
         
-        # HUD section (top) - same as in game
+        # === HUD SECTION (TOP) ===
         self.hud_textbox = UITextBox(
             "",
             pygame.Rect((0, 0), (display_width, self.hud_height)),
@@ -32,18 +32,52 @@ class MenuScreen:
             object_id="#hud_textbox",
         )
         
-        # Coordinate label in HUD
-        self.coord_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect((10, 2), (-1, -1)),
-            text="MENU",
+        self.hud_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((10, 8), (-1, -1)),
+            text="",
             manager=self.manager
         )
         
-        # Main section (middle) - empty for now
-        # Future: add inventory, stats, etc.
+        # === MAIN SECTION (MIDDLE) ===
+        main_y = self.hud_height
         
-        # Footer section (bottom) - empty for now
-        # Future: add controls, messages, etc.
+        self.main_textbox = UITextBox(
+            "",
+            pygame.Rect((0, main_y), (display_width, self.main_height)),
+            manager=self.manager,
+            object_id="#dialog_textbox",  # Reuse dialog style
+        )
+        
+        # Menu content label
+        menu_content = ("")
+        
+        self.main_content_label = pygame_gui.elements.UITextBox(
+            html_text=menu_content,
+            relative_rect=pygame.Rect((10, main_y + 10), (display_width - 20, self.main_height - 20)),
+            manager=self.manager,
+            object_id="#menu_content"
+        )
+        
+        # === FOOTER SECTION (BOTTOM) ===
+        footer_y = display_height - self.footer_height
+        
+        self.footer_textbox = UITextBox(
+            "",
+            pygame.Rect((0, footer_y), (display_width, self.footer_height)),
+            manager=self.manager,
+            object_id="#dialog_textbox",  # Reuse dialog style
+        )
+        
+        footer_text = (
+            "USE EQUIPE"
+        )
+        
+        self.footer_label = pygame_gui.elements.UITextBox(
+            html_text=footer_text,
+            relative_rect=pygame.Rect((10, footer_y + 10), (display_width - 20, self.footer_height - 20)),
+            manager=self.manager,
+            object_id="#menu_footer"
+        )
     
     def handle_input(self, keys: pygame.key.ScancodeWrapper, prev_keys: dict) -> bool:
         """Handle menu input
@@ -55,11 +89,11 @@ class MenuScreen:
         Returns:
             True if menu should remain open, False to close
         """
-        # Check if B key was just pressed
-        was_pressed = prev_keys.get(pygame.K_b, False)
-        is_pressed = keys[pygame.K_b]
+        # Check if B key was just pressed (close menu)
+        was_b_pressed = prev_keys.get(pygame.K_b, False)
+        is_b_pressed = keys[pygame.K_b]
         
-        if is_pressed and not was_pressed:
+        if is_b_pressed and not was_b_pressed:
             return False  # Close menu
         
         return True  # Keep menu open
@@ -78,30 +112,10 @@ class MenuScreen:
         Args:
             surface: Surface to render to
         """
-        # Fill background
-        surface.fill((20, 20, 40))  # Dark blue background
+        # Fill background with dark color
+        surface.fill((10, 10, 20))
         
-        # Draw section dividers (for debugging/visibility)
-        # HUD bottom border
-        pygame.draw.line(
-            surface,
-            (100, 100, 100),
-            (0, self.hud_height),
-            (self.display_width, self.hud_height),
-            2
-        )
-        
-        # Footer top border
-        footer_y = self.display_height - self.footer_height
-        pygame.draw.line(
-            surface,
-            (100, 100, 100),
-            (0, footer_y),
-            (self.display_width, footer_y),
-            2
-        )
-        
-        # Draw GUI elements
+        # Draw GUI elements (textboxes will render their backgrounds)
         self.manager.draw_ui(surface)
     
     def process_events(self, event: pygame.event.Event):
@@ -111,3 +125,22 @@ class MenuScreen:
             event: Pygame event to process
         """
         self.manager.process_events(event)
+    
+    def recreate_for_resolution(self, display_width: int, display_height: int):
+        """Recreate menu elements for new resolution
+        
+        Args:
+            display_width: New display width
+            display_height: New display height
+        """
+        self.display_width = display_width
+        self.display_height = display_height
+        
+        # Recalculate heights
+        self.main_height = display_height - self.hud_height - self.footer_height
+        
+        # Recreate manager
+        self.manager = pygame_gui.UIManager((display_width, display_height), "ui.json")
+        
+        # Recreate all UI elements
+        self.__init__(display_width, display_height)
