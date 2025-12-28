@@ -63,8 +63,12 @@ class Hero(Drawable):
             ("idle_front", "data/sprites/SpriteGfx000Anim001.png", 32, 48, 1),
             ("walk_back", "data/sprites/SpriteGfx000Anim002.png", 32, 48, 8),
             ("walk_front", "data/sprites/SpriteGfx000Anim003.png", 32, 48, 8),
+            ("carry_walk_back", "data/sprites/SpriteGfx000Anim006.png", 32, 48, 8),
+            ("carry_walk_front", "data/sprites/SpriteGfx000Anim007.png", 32, 48, 8),
             ("jump_back", "data/sprites/SpriteGfx000Anim008.png", 32, 48, 2),
             ("jump_front", "data/sprites/SpriteGfx000Anim009.png", 32, 48, 2),
+            ("carry_jump_back", "data/sprites/SpriteGfx000Anim010.png", 32, 48, 2),
+            ("carry_jump_front", "data/sprites/SpriteGfx000Anim011.png", 32, 48, 2),
         ]
         
         try:
@@ -80,6 +84,10 @@ class Hero(Drawable):
             self.animations["walk_right"] = self.animations["walk_front"]
             self.animations["jump_left"] = self.animations["jump_back"]
             self.animations["jump_right"] = self.animations["jump_front"]
+            self.animations["carry_walk_left"] = self.animations["carry_walk_back"]
+            self.animations["carry_walk_right"] = self.animations["carry_walk_front"]
+            self.animations["carry_jump_left"] = self.animations["carry_jump_back"]
+            self.animations["carry_jump_right"] = self.animations["carry_jump_front"]
             
         except (pygame.error, FileNotFoundError) as e:
             print(f"Warning: Could not load hero animation sprites: {e}")
@@ -95,11 +103,13 @@ class Hero(Drawable):
             self.animations[anim_name] = [placeholder.copy()]
         
         # Multi-frame walk animations
-        for anim_name in ["walk_front", "walk_back", "walk_left", "walk_right"]:
+        for anim_name in ["walk_front", "walk_back", "walk_left", "walk_right",
+                          "carry_walk_front", "carry_walk_back", "carry_walk_left", "carry_walk_right"]:
             self.animations[anim_name] = [placeholder.copy() for _ in range(8)]
         
         # Jump animations
-        for anim_name in ["jump_front", "jump_back", "jump_left", "jump_right"]:
+        for anim_name in ["jump_front", "jump_back", "jump_left", "jump_right",
+                          "carry_jump_front", "carry_jump_back", "carry_jump_left", "carry_jump_right"]:
             self.animations[anim_name] = [placeholder.copy() for _ in range(2)]
     
     def update_z_velocity(self) -> None:
@@ -156,6 +166,9 @@ class Hero(Drawable):
         Returns:
             Name of the animation to play
         """
+        # Determine animation prefix based on carrying state
+        prefix = "carry_" if self.is_grabbing else ""
+        
         # Priority: jumping (is_jumping) > airborne (falling) > walking > idle
         if self.is_jumping:
             state = "jump"
@@ -164,7 +177,9 @@ class Hero(Drawable):
         elif self.is_moving:
             state = "walk"
         else:
+            # No carry idle animation, use regular idle
             state = "idle"
+            prefix = ""
         
         # Determine direction suffix
         direction_map = {
@@ -175,7 +190,7 @@ class Hero(Drawable):
         }
         
         direction = direction_map.get(self.facing_direction, "front")
-        return f"{state}_{direction}"
+        return f"{prefix}{state}_{direction}"
 
     def _update_frame_index(self, is_moving: bool) -> None:
         """Update the current frame index based on animation state
@@ -271,11 +286,15 @@ class Hero(Drawable):
         """
         self.is_grabbing = True
         self.grabbed_entity = entity
+        # Force animation update to switch to carry animation
+        self.update_animation(self.is_moving)
     
     def release_entity(self) -> None:
         """Release the currently grabbed entity"""
         self.is_grabbing = False
         self.grabbed_entity = None
+        # Force animation update to switch back to regular animation
+        self.update_animation(self.is_moving)
     
     def has_grabbed_entity(self) -> bool:
         """Check if hero is currently grabbing an entity
