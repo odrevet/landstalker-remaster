@@ -22,8 +22,6 @@ from script_commands import run_entity_script
 from menu_screen import MenuScreen
 
 # Constants
-DISPLAY_HEIGHT: int = 224
-DISPLAY_WIDTH: int = 320
 CAMERA_SPEED: int = 5
 GRAVITY: float = 3.0
 HERO_SPEED: float = 2.00
@@ -40,9 +38,13 @@ class Game:
         self.is_resizable: bool = args.resizable
         self.display_scale: int = args.scale
         
-        # Base resolution (internal rendering resolution)
-        self.base_width: int = DISPLAY_WIDTH
-        self.base_height: int = DISPLAY_HEIGHT
+        # Display resolution (internal rendering resolution) - controls zoom/view
+        self.display_width: int = args.display_width
+        self.display_height: int = args.display_height
+        
+        # Base resolution (for backward compatibility with scaling calculations)
+        self.base_width: int = self.display_width
+        self.base_height: int = self.display_height
         
         # Window resolution
         self.window_width: int = args.width * self.display_scale
@@ -65,9 +67,9 @@ class Game:
                 (self.window_width, self.window_height)
             )
         
-        # Surface for rendering (always at base resolution for pixel-perfect scaling)
+        # Surface for rendering (at display resolution for zoom control)
         self.surface: pygame.Surface = pygame.Surface(
-            (self.base_width, self.base_height)
+            (self.display_width, self.display_height)
         )
         
         pygame.display.set_caption("LandStalker")
@@ -108,17 +110,17 @@ class Game:
         self.prev_hero_tile_x: int = -1
         self.prev_hero_tile_y: int = -1
 
-
-
         # Key state tracking for toggles
         self.prev_keys: dict = {}
         
         # GUI setup
         # HUD
-        self.manager: pygame_gui.UIManager = pygame_gui.UIManager((DISPLAY_WIDTH, DISPLAY_HEIGHT), "ui.json")
+        self.manager: pygame_gui.UIManager = pygame_gui.UIManager(
+            (self.display_width, self.display_height), "ui.json"
+        )
         self.hud_textbox: UITextBox = UITextBox(
             "",
-            pygame.Rect((0, 0), (DISPLAY_WIDTH, 36)),
+            pygame.Rect((0, 0), (self.display_width, 36)),
             manager=self.manager,
             object_id="#hud_textbox",
         )
@@ -131,17 +133,17 @@ class Game:
         # Dialog
         self.dialog_textbox: UITextBox = UITextBox(
             "",
-            pygame.Rect((0, 164), (DISPLAY_WIDTH, 58)),
+            pygame.Rect((0, self.display_height - 60), (self.display_width, 58)),
             manager=self.manager,
             object_id="#dialog_textbox",
         )
         self.coord_dialog: pygame_gui.elements.UILabel = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect((10, 164), (-1, -1)),
+            relative_rect=pygame.Rect((10, self.display_height - 60), (-1, -1)),
             text="",
             manager=self.manager
         )
 
-        self.menu_screen = MenuScreen(DISPLAY_WIDTH, DISPLAY_HEIGHT)
+        self.menu_screen = MenuScreen(self.display_width, self.display_height)
         self.menu_active = False
         
         self.dialog_textbox.hide()
@@ -152,7 +154,9 @@ class Game:
         self.fade_mode: Optional[str] = None    # "out", "in", or None
         self.fade_speed: float = 600.0          # alpha units per second
         self.fade_callback: Optional[Callable[[], None]] = None
-        self.fade_surface: pygame.Surface = pygame.Surface((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        self.fade_surface: pygame.Surface = pygame.Surface(
+            (self.display_width, self.display_height)
+        )
         self.fade_surface.fill((0, 0, 0))
         self.fade_surface.set_alpha(0)
 
@@ -171,7 +175,6 @@ class Game:
 
         # Center camera on hero initially
         self.center_camera_on_hero()
-        
     
     def generate_bip_sound(self, base_frequency: float, duration: float = 0.05) -> pygame.mixer.Sound:
         """Generate a procedural bip sound with adjustable pitch
@@ -302,8 +305,8 @@ class Game:
         )
         
         # Center camera on hero
-        self.camera_x = self.hero._screen_pos.x - DISPLAY_WIDTH // 2
-        self.camera_y = self.hero._screen_pos.y - DISPLAY_HEIGHT // 2
+        self.camera_x = self.hero._screen_pos.x - self.display_width // 2
+        self.camera_y = self.hero._screen_pos.y - self.display_height // 2
         
         # Update hero screen position with new camera
         self.hero.update_camera(
@@ -1152,8 +1155,9 @@ class Game:
     def render(self) -> None:
         self.surface.fill((0, 0, 0))
         
-        # Draw map and debug
-        self.room.draw(self.surface, self.camera_x, self.camera_y, self.hero)
+        # Draw map and debug (passing display dimensions to room.draw)
+        self.room.draw(self.surface, self.camera_x, self.camera_y, self.hero,
+                       self.display_width, self.display_height)
 
         if self.debug_mode:
             if self.is_height_map_displayed:
@@ -1176,11 +1180,11 @@ class Game:
         # Draw UI on top of everything
         self.manager.draw_ui(self.surface)
 
-        # Scale with 4:3 aspect ratio
+        # Scale with aspect ratio
         screen_w, screen_h = self.screen.get_size()
-        scale = min(screen_w / DISPLAY_WIDTH, screen_h / DISPLAY_HEIGHT)
-        scaled_w = int(DISPLAY_WIDTH * scale)
-        scaled_h = int(DISPLAY_HEIGHT * scale)
+        scale = min(screen_w / self.display_width, screen_h / self.display_height)
+        scaled_w = int(self.display_width * scale)
+        scaled_h = int(self.display_height * scale)
         scaled_surface = pygame.transform.scale(self.surface, (scaled_w, scaled_h))
         
         # Center the scaled surface
@@ -1332,9 +1336,9 @@ class Game:
             if self.menu_active:
                 # Scale menu surface to screen
                 screen_w, screen_h = self.screen.get_size()
-                scale = min(screen_w / DISPLAY_WIDTH, screen_h / DISPLAY_HEIGHT)
-                scaled_w = int(DISPLAY_WIDTH * scale)
-                scaled_h = int(DISPLAY_HEIGHT * scale)
+                scale = min(screen_w / self.display_width, screen_h / self.display_height)
+                scaled_w = int(self.display_width * scale)
+                scaled_h = int(self.display_height * scale)
                 scaled_surface = pygame.transform.scale(self.surface, (scaled_w, scaled_h))
                 
                 offset_x = (screen_w - scaled_w) // 2

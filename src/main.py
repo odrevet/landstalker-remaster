@@ -17,6 +17,13 @@ def main() -> None:
     parser.add_argument('--no-resizable', dest='resizable', action='store_false', help='Disable window resizing')
     parser.add_argument('--scale', type=int, default=1, choices=[1, 2, 3, 4], 
                        help='Display scale multiplier (1-4, default: 1)')
+    
+    # Display resolution (game rendering resolution / zoom level)
+    parser.add_argument('--display-width', type=int, default=320, 
+                       help='Game display width - controls zoom level (default: 320)')
+    parser.add_argument('--display-height', type=int, default=224, 
+                       help='Game display height - controls zoom level (default: 224)')
+    
     args: argparse.Namespace = parser.parse_args()
     
     # Create and run game

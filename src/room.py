@@ -10,8 +10,6 @@ from warp import Warp
 from entity import Entity
 from heightmap import Heightmap
 
-DRAWING_HEIGHT: int = 224
-DRAWING_WIDTH: int = 320
 
 class Tile:
     def __init__(self, offset: Tuple[int, int]) -> None:
@@ -36,11 +34,12 @@ class Blockset:
         self.gid: Optional[int] = None
 
     def draw(self, surface: pygame.Surface, layer_offset_h: float, 
-             camera_x: float, camera_y: float) -> None:
+             camera_x: float, camera_y: float, 
+             display_width: int, display_height: int) -> None:
         if self.screen_pos.x - camera_x + layer_offset_h + 16 > 0 and \
            self.screen_pos.y - camera_y + layer_offset_h + 16 > 0 and \
-           self.screen_pos.x - camera_x < DRAWING_WIDTH and \
-           self.screen_pos.y - camera_y < DRAWING_HEIGHT:
+           self.screen_pos.x - camera_x < display_width and \
+           self.screen_pos.y - camera_y < display_height:
             for tile in self.tiles:
                 tile.draw(surface, self.screen_pos, layer_offset_h, camera_x, camera_y)
 
@@ -50,9 +49,11 @@ class Layer:
         self.data: Optional[TiledTileLayer] = None
         self.blocksets: List[Blockset] = []
 
-    def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float) -> None:
+    def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float,
+             display_width: int, display_height: int) -> None:
         for blockset in self.blocksets:
-            blockset.draw(surface, self.data.offsetx, camera_x, camera_y)
+            blockset.draw(surface, self.data.offsetx, camera_x, camera_y, 
+                         display_width, display_height)
 
 
 class Room:
@@ -130,9 +131,12 @@ class Room:
                 entity = Entity(entity_data, 16)
                 self.entities.append(entity)
 
-    def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float, hero: Hero) -> None:
-        self.background_layer.draw(surface, camera_x, camera_y)
-        self.foreground_layer.draw(surface, camera_x, camera_y)
+    def draw(self, surface: pygame.Surface, camera_x: float, camera_y: float, 
+             hero: Hero, display_width: int, display_height: int) -> None:
+        self.background_layer.draw(surface, camera_x, camera_y, 
+                                   display_width, display_height)
+        self.foreground_layer.draw(surface, camera_x, camera_y, 
+                                   display_width, display_height)
 
         # Prepare entities for drawing (update their screen positions)
         tile_h = self.data.tileheight
