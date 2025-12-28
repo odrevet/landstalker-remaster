@@ -63,6 +63,8 @@ class Hero(Drawable):
             ("idle_front", "data/sprites/SpriteGfx000Anim001.png", 32, 48, 1),
             ("walk_back", "data/sprites/SpriteGfx000Anim002.png", 32, 48, 8),
             ("walk_front", "data/sprites/SpriteGfx000Anim003.png", 32, 48, 8),
+            ("pickup_back", "data/sprites/SpriteGfx000Anim004.png", 32, 48, 3),
+            ("pickup_front", "data/sprites/SpriteGfx000Anim005.png", 32, 48, 3),
             ("carry_walk_back", "data/sprites/SpriteGfx000Anim006.png", 32, 48, 8),
             ("carry_walk_front", "data/sprites/SpriteGfx000Anim007.png", 32, 48, 8),
             ("jump_back", "data/sprites/SpriteGfx000Anim008.png", 32, 48, 2),
@@ -89,6 +91,12 @@ class Hero(Drawable):
             self.animations["carry_jump_left"] = self.animations["carry_jump_back"]
             self.animations["carry_jump_right"] = self.animations["carry_jump_front"]
             
+            # Create carry idle animations using first frame of pickup animations
+            self.animations["carry_idle_back"] = [self.animations["pickup_back"][0]]
+            self.animations["carry_idle_front"] = [self.animations["pickup_front"][0]]
+            self.animations["carry_idle_left"] = [self.animations["pickup_back"][0]]
+            self.animations["carry_idle_right"] = [self.animations["pickup_back"][0]]
+            
         except (pygame.error, FileNotFoundError) as e:
             print(f"Warning: Could not load hero animation sprites: {e}")
             self._create_placeholder_animations()
@@ -99,7 +107,8 @@ class Hero(Drawable):
         placeholder.fill((255, 0, 255, 128))  # Magenta placeholder
         
         # Single frame animations
-        for anim_name in ["idle_front", "idle_back", "idle_left", "idle_right"]:
+        for anim_name in ["idle_front", "idle_back", "idle_left", "idle_right",
+                          "carry_idle_front", "carry_idle_back", "carry_idle_left", "carry_idle_right"]:
             self.animations[anim_name] = [placeholder.copy()]
         
         # Multi-frame walk animations
@@ -111,6 +120,10 @@ class Hero(Drawable):
         for anim_name in ["jump_front", "jump_back", "jump_left", "jump_right",
                           "carry_jump_front", "carry_jump_back", "carry_jump_left", "carry_jump_right"]:
             self.animations[anim_name] = [placeholder.copy() for _ in range(2)]
+        
+        # Pickup animations
+        for anim_name in ["pickup_front", "pickup_back"]:
+            self.animations[anim_name] = [placeholder.copy() for _ in range(3)]
     
     def update_z_velocity(self) -> None:
         """Calculate Z-axis velocity based on position change"""
@@ -177,9 +190,8 @@ class Hero(Drawable):
         elif self.is_moving:
             state = "walk"
         else:
-            # No carry idle animation, use regular idle
+            # Use carry_idle when carrying and stationary
             state = "idle"
-            prefix = ""
         
         # Determine direction suffix
         direction_map = {
