@@ -110,6 +110,12 @@ class Game:
         self.prev_hero_tile_x: int = -1
         self.prev_hero_tile_y: int = -1
 
+        # Zoom control
+        self.original_display_width: int = self.display_width
+        self.original_display_height: int = self.display_height
+        self.zoom_levels: List[float] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
+        self.current_zoom_index: int = self.zoom_levels.index(1.0)  # Start at 1.0x
+
         # Key state tracking for toggles
         self.prev_keys: dict = {}
         
@@ -1000,6 +1006,85 @@ class Game:
             if self.is_key_just_pressed(pygame.K_F3, keys):
                 self.is_warps_displayed = not self.is_warps_displayed
     
+    def handle_zoom(self, keys: pygame.key.ScancodeWrapper) -> None:
+        """Handle zoom in/out with Z key (Shift+Z to zoom out)"""
+        # Check if Z key was just pressed
+        if self.is_key_just_pressed(pygame.K_z, keys):
+            if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
+                # Zoom out (decrease zoom index)
+                if self.current_zoom_index > 0:
+                    self.current_zoom_index -= 1
+                    self.apply_zoom()
+            else:
+                # Zoom in (increase zoom index)
+                if self.current_zoom_index < len(self.zoom_levels) - 1:
+                    self.current_zoom_index += 1
+                    self.apply_zoom()
+    
+    def apply_zoom(self) -> None:
+        """Apply the current zoom level to display resolution"""
+        zoom_factor = self.zoom_levels[self.current_zoom_index]
+        
+        # Calculate new display dimensions maintaining aspect ratio
+        self.display_width = int(self.original_display_width / zoom_factor)
+        self.display_height = int(self.original_display_height / zoom_factor)
+        
+        # Update base dimensions for scaling calculations
+        self.base_width = self.display_width
+        self.base_height = self.display_height
+        
+        # Recreate surface at new resolution
+        self.surface = pygame.Surface((self.display_width, self.display_height))
+        
+        # Recreate fade surface
+        self.fade_surface = pygame.Surface((self.display_width, self.display_height))
+        self.fade_surface.fill((0, 0, 0))
+        self.fade_surface.set_alpha(self.fade_alpha)
+        
+        # Recreate GUI manager with new dimensions
+        self.manager = pygame_gui.UIManager((self.display_width, self.display_height), "ui.json")
+        
+        # Recreate HUD elements
+        self.hud_textbox = UITextBox(
+            "",
+            pygame.Rect((0, 0), (self.display_width, 36)),
+            manager=self.manager,
+            object_id="#hud_textbox",
+        )
+        self.coord_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((10, 2), (-1, -1)),
+            text="",
+            manager=self.manager
+        )
+        
+        # Recreate dialog elements
+        self.dialog_textbox = UITextBox(
+            "",
+            pygame.Rect((0, self.display_height - 60), (self.display_width, 58)),
+            manager=self.manager,
+            object_id="#dialog_textbox",
+        )
+        self.coord_dialog = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((10, self.display_height - 60), (-1, -1)),
+            text="",
+            manager=self.manager
+        )
+        
+        # Hide dialog by default
+        self.dialog_textbox.hide()
+        self.coord_dialog.hide()
+        
+        # Recreate menu screen
+        self.menu_screen = MenuScreen(self.display_width, self.display_height)
+        
+        # Recalculate scaling
+        self._update_scaling()
+        
+        # Recenter camera on hero
+        self.center_camera_on_hero()
+        
+        print(f"Zoom: {zoom_factor}x ({self.display_width}x{self.display_height})")
+    
     def update_hud(self) -> None:
         """Update HUD with debug information"""
         if self.debug_mode:
@@ -1298,6 +1383,7 @@ class Game:
                 # Normal gameplay controls
                 self.handle_camera_movement(keys)
                 self.handle_debug_toggles(keys)
+                self.handle_zoom(keys)
                 self.apply_gravity()
                 self.handle_hero_movement(keys)
 
