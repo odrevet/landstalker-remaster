@@ -1295,6 +1295,32 @@ class Game:
                 self.check_warp_collision()  # Check for warps after movement
                 self.check_fall()
             
+                update_carried_positions(
+                    self.hero,
+                    self.room.entities,
+                    16,
+                    self.room.heightmap.left_offset,
+                    self.room.heightmap.top_offset,
+                    self.camera_x,
+                    self.camera_y
+                )
+                
+                if not self.debug_mode:
+                    self.center_camera_on_hero()
+
+                for entity in self.room.entities:
+                    if hasattr(entity, 'script_handler') and entity.script_handler.is_running:
+                        entity.script_handler.update()
+
+                        # Update entity's screen position based on world position changes
+                        entity.update_camera(
+                            self.room.heightmap.left_offset,
+                            self.room.heightmap.top_offset,
+                            self.camera_x,
+                            self.camera_y
+                        )
+
+
             if self.menu_active:
                 # Scale menu surface to screen
                 screen_w, screen_h = self.screen.get_size()
