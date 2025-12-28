@@ -25,7 +25,6 @@ class ScriptCommands:
         self.pause_ticks_remaining = 0
         self.one_shot = False
         self.has_been_triggered = False  # Track if one-shot script has run
-        self.speed_multiplier = 1.0  # Speed multiplier for movement commands
         
         # Command dispatcher - maps command names to handler methods
         self.command_handlers = {
@@ -95,15 +94,15 @@ class ScriptCommands:
             dx, dy = direction_map.get(orientation, (0.0, 0.0))
             
             # Calculate target position
-            target_x = self.entity.get_world_pos().x + (dx * 16 * distance * self.speed_multiplier)
-            target_y = self.entity.get_world_pos().y + (dy * 16 * distance * self.speed_multiplier)
+            target_x = self.entity.get_world_pos().x + (dx * 16 * distance * self.entity.speed)
+            target_y = self.entity.get_world_pos().y + (dy * 16 * distance * self.entity.speed)
             
             self.current_command_state = {
                 'target_x': target_x,
                 'target_y': target_y,
                 'dx': dx,
                 'dy': dy,
-                'speed': 1.0 * self.speed_multiplier
+                'speed': self.entity.speed
             }
             
             print(f"  [START] MoveRelative: distance={distance} tiles, target=({target_x:.1f}, {target_y:.1f})")
@@ -268,8 +267,9 @@ class ScriptCommands:
         Returns:
             True (instant command)
         """
-        self.speed_multiplier = 3
-        print(f"  [EXEC] FastSpeed: speed multiplier set to {self.speed_multiplier}x")
+        if self.entity.speed < 3:   # TODO hero cannot keep up when entity speed is more than 3
+            self.entity.speed += 1 
+        print(f"  [EXEC] FastSpeed: entity speed set to {self.entity.speed}")
         return True
     
     # === Action Commands ===
