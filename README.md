@@ -77,5 +77,16 @@ python3 src/main.py -r 157 -x 400 -y 300 -z 0 --debug
 
 Display player coords in the HUD
 
-h key : toogle draw heightmap 
-b key : toogle draw hero boundbox
+F1: toogle draw boundbox 
+F2: toogle draw heightmap
+F3: toogle draw warp
+
+
+# Standalone exec 
+
+```
+pyinstaller --onefile src/main.py \
+    --name landstalker \
+    --add-data "data:data" \
+    --add-data "ui.json:."
+```
