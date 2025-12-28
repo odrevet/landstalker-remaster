@@ -389,9 +389,9 @@ class Entity(Drawable):
             surface: Pygame surface to draw on
         """
         # Only draw sprite if it exists and is visible
-        if self.image and self.visible and not self.sprite_missing:
+        if self.image and self.visible:
             display_image = self.image
-            if self.orientation in ("SE", "NW"):
+            if self.no_rotate == False and self.orientation in ("SE", "NW"):
                 display_image = pygame.transform.flip(self.image, True, False)
             
             surface.blit(display_image, self._screen_pos)
