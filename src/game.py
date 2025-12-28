@@ -2,6 +2,9 @@ from pygame.math import Vector3
 import sys
 import os
 import argparse
+import math
+import array
+
 from typing import List, Tuple, Optional, Callable
 import yaml
 import pygame
@@ -172,34 +175,39 @@ class Game:
     
     def generate_bip_sound(self, base_frequency: float, duration: float = 0.05) -> pygame.mixer.Sound:
         """Generate a procedural bip sound with adjustable pitch
-        
         Args:
             base_frequency: Base frequency in Hz (e.g., 800)
             duration: Duration of the sound in seconds (default: 0.05)
-        
         Returns:
             pygame.mixer.Sound object
-        """
-        import numpy as np
-        
+        """       
         sample_rate = 22050
         frequency = base_frequency * self.dialog_bip_pitch
         
-        # Generate time array
-        t = np.linspace(0, duration, int(sample_rate * duration))
+        # Calculate number of samples
+        num_samples = int(sample_rate * duration)
         
-        # Create sine wave with exponential envelope to avoid clicks
-        envelope = np.exp(-t * 20)  # Exponential decay
-        wave = np.sin(2 * np.pi * frequency * t) * envelope
+        # Generate wave samples
+        samples = array.array('h')  # 'h' = signed short (16-bit)
         
-        # Convert to 16-bit PCM format
-        wave = (wave * 32767).astype(np.int16)
+        for i in range(num_samples):
+            t = i / sample_rate
+            
+            # Exponential envelope to avoid clicks
+            envelope = math.exp(-t * 20)
+            
+            # Generate sine wave with envelope
+            wave_value = math.sin(2 * math.pi * frequency * t) * envelope
+            
+            # Convert to 16-bit PCM format
+            sample = int(wave_value * 32767)
+            
+            # Add stereo samples (left and right channels)
+            samples.append(sample)
+            samples.append(sample)
         
-        # Create stereo sound (duplicate mono to both channels)
-        stereo_wave = np.column_stack((wave, wave))
-        
-        # Create pygame Sound from numpy array
-        sound = pygame.sndarray.make_sound(stereo_wave)
+        # Create pygame Sound from array
+        sound = pygame.mixer.Sound(buffer=samples)
         
         return sound
     
