@@ -548,7 +548,7 @@ def run_entity_script(entity, behaviour_id: int, one_shot: bool = True) -> None:
             print(f"Warning: No 'Script' key found in {filepath}")
             return
         
-        print(f"Loading Behaviour {behaviour_id}: {data.get('Name', 'Unknown')}")
+        #print(f"Loading Behaviour {behaviour_id}: {data.get('Name', 'Unknown')}")
         
         # Create command handler if entity doesn't have one
         if not hasattr(entity, 'script_handler'):

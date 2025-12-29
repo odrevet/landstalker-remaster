@@ -248,7 +248,6 @@ class Game:
         print(f"Playing BGM: {bgm_path}")
 
     def on_entity_collids(self, entity):
-        print(f"On entity collids {entity.name} {entity.behaviour}")
         run_entity_script(entity, entity.behaviour)
 
     def fix_hero_spawn_position(self) -> None:
@@ -588,30 +587,41 @@ class Game:
 
         return False
 
-    def apply_gravity(self) -> None:
-        """Apply gravity to hero using bounding box corners, considering both terrain and entities"""
-        tile_h: int = self.room.data.tileheight
+    def apply_gravity_to_drawable(self, drawable, tile_h: int, is_hero: bool = False) -> None:
+        """Apply gravity to any drawable object (hero or entity)
         
-        # Get hero's foot height and bounding box
-        hero_pos = self.hero.get_world_pos()
-        height_at_foot: float = hero_pos.z
-        corners = self.hero.get_bbox_corners_world(tile_h)
-        hero_bbox = self.hero.get_bounding_box(tile_h)
+        Args:
+            drawable: The drawable object (hero or entity) to apply gravity to
+            tile_h: Tile height in pixels
+            is_hero: Whether this drawable is the hero (for special handling)
+        """
+        # Skip if entity has gravity disabled (hero always has gravity)
+        if not is_hero and hasattr(drawable, 'gravity') and not drawable.gravity:
+            return
+        
+        # Skip if hero is jumping
+        if is_hero and drawable.is_jumping:
+            return
+        
+        # Get drawable's current position and bounding box
+        drawable_pos = drawable.get_world_pos()
+        height_at_bottom = drawable_pos.z
+        corners = drawable.get_bbox_corners_world(tile_h)
+        drawable_bbox = drawable.get_bounding_box(tile_h)
         
         # Get tile coordinates for each corner
-        # corners are: (left, bottom, right, top)
-        left_x: int = int(corners[0][0] // tile_h)
-        left_y: int = int(corners[0][1] // tile_h)
-        bottom_x: int = int(corners[1][0] // tile_h)
-        bottom_y: int = int(corners[1][1] // tile_h)
-        right_x: int = int(corners[2][0] // tile_h)
-        right_y: int = int(corners[2][1] // tile_h)
-        top_x: int = int(corners[3][0] // tile_h)
-        top_y: int = int(corners[3][1] // tile_h)
+        left_x = int(corners[0][0] // tile_h)
+        left_y = int(corners[0][1] // tile_h)
+        bottom_x = int(corners[1][0] // tile_h)
+        bottom_y = int(corners[1][1] // tile_h)
+        right_x = int(corners[2][0] // tile_h)
+        right_y = int(corners[2][1] // tile_h)
+        top_x = int(corners[3][0] // tile_h)
+        top_y = int(corners[3][1] // tile_h)
         
         # Get map dimensions for bounds checking
-        map_width: int = self.room.heightmap.get_width()
-        map_height: int = self.room.heightmap.get_height()
+        map_width = self.room.heightmap.get_width()
+        map_height = self.room.heightmap.get_height()
         
         # Clamp coordinates to valid range
         left_x = max(0, min(left_x, map_width - 1))
@@ -623,71 +633,106 @@ class Game:
         top_x = max(0, min(top_x, map_width - 1))
         top_y = max(0, min(top_y, map_height - 1))
         
-        # Check if hero is above ground
-        if not self.hero.is_jumping:
-            cells = self.room.heightmap.cells
-            
-            # Find the highest ground level under the hero (terrain)
-            max_ground_height: float = max(
-                cells[top_y][top_x].height * tile_h,
-                cells[bottom_y][bottom_x].height * tile_h,
-                cells[right_y][right_x].height * tile_h,
-                cells[left_y][left_x].height * tile_h
-            )
-            
-            # Check for entity surfaces below the hero (excluding grabbed entity)
-            hero_x, hero_y, hero_w, hero_h = hero_bbox
-            entities_to_check = [e for e in self.room.entities 
-                               if e is not self.hero.grabbed_entity]
-            
-
+        cells = self.room.heightmap.cells
+        
+        # Find the highest ground level under the drawable (terrain)
+        max_ground_height = max(
+            cells[top_y][top_x].height * tile_h,
+            cells[bottom_y][bottom_x].height * tile_h,
+            cells[right_y][right_x].height * tile_h,
+            cells[left_y][left_x].height * tile_h
+        )
+        
+        # Check for entity surfaces below this drawable
+        drawable_x, drawable_y, drawable_w, drawable_h = drawable_bbox
+        entities_to_check = [e for e in self.room.entities 
+                        if e is not drawable and e is not self.hero.grabbed_entity]
+        
+        # Check if standing on an entity (hero-specific collision callback)
+        if is_hero:
             entity_standing_on = get_entity_hero_is_standing_on(
-                                self.hero,
-                                entities_to_check,
-                                tile_h)
-            if entity_standing_on is not None:
-                self.on_entity_collids(entity_standing_on)
-
-            entity_top = get_entity_top_at_position(
+                drawable,
                 entities_to_check,
-                hero_x,
-                hero_y,
-                hero_w,
-                hero_h,
-                height_at_foot,
                 tile_h
             )
+            if entity_standing_on is not None:
+                self.on_entity_collids(entity_standing_on)
+        
+        entity_top = get_entity_top_at_position(
+            entities_to_check,
+            drawable_x,
+            drawable_y,
+            drawable_w,
+            drawable_h,
+            height_at_bottom,
+            tile_h
+        )
+        
+        # Use the highest surface (terrain or entity)
+        max_surface_height = max_ground_height
+        if entity_top is not None:
+            max_surface_height = max(max_ground_height, entity_top)
+        
+        # Check if drawable is above the highest surface
+        if max_surface_height < height_at_bottom:
+            # Drawable is in the air, apply gravity
+            new_z = drawable_pos.z - GRAVITY
             
-            # Use the highest surface (terrain or entity)
-            max_surface_height: float = max_ground_height
-            if entity_top is not None:
-                max_surface_height = max(max_ground_height, entity_top)
+            # Check if gravity would push drawable below surface
+            if new_z <= max_surface_height:
+                # Snap to surface level
+                new_z = max_surface_height
+                if is_hero:
+                    drawable.touch_ground = True
+            else:
+                # Still falling
+                if is_hero:
+                    drawable.touch_ground = False
             
-            # Check if hero is above the highest surface
-            if max_surface_height < height_at_foot:
-                # Hero is in the air, apply gravity
-                new_z: float = hero_pos.z - GRAVITY
-                
-                # Check if gravity would push hero below surface
-                if new_z <= max_surface_height:
-                    # Snap to surface level
-                    new_z = max_surface_height
-                    self.hero.touch_ground = True
-                else:
-                    # Still falling
-                    self.hero.touch_ground = False
-                
-                self.hero.set_world_pos(
-                    hero_pos.x, hero_pos.y, new_z,
+            drawable.set_world_pos(
+                drawable_pos.x, drawable_pos.y, new_z,
+                self.room.heightmap.left_offset,
+                self.room.heightmap.top_offset,
+                self.camera_x,
+                self.camera_y
+            )
+            
+            # Update bounding box if it exists
+            if hasattr(drawable, 'bbox') and drawable.bbox:
+                drawable.bbox.update_position(drawable._world_pos)
+            
+            # Update grabbed entity position if hero is carrying something
+            if is_hero and drawable.is_grabbing:
+                drawable.update_grabbed_entity_position(
+                    self.room.heightmap.left_offset,
+                    self.room.heightmap.top_offset,
+                    self.camera_x,
+                    self.camera_y,
+                    tile_h
+                )
+            
+            if is_hero and self.camera_locked:
+                self.center_camera_on_hero()
+        else:
+            # Drawable is on or below surface, snap to surface
+            correct_z = max_surface_height
+            
+            if drawable_pos.z != correct_z:
+                drawable.set_world_pos(
+                    drawable_pos.x, drawable_pos.y, correct_z,
                     self.room.heightmap.left_offset,
                     self.room.heightmap.top_offset,
                     self.camera_x,
                     self.camera_y
                 )
                 
-                # Update grabbed entity position if carrying something
-                if self.hero.is_grabbing:
-                    self.hero.update_grabbed_entity_position(
+                # Update bounding box if it exists
+                if hasattr(drawable, 'bbox') and drawable.bbox:
+                    drawable.bbox.update_position(drawable._world_pos)
+                
+                # Update grabbed entity position if hero is carrying something
+                if is_hero and drawable.is_grabbing:
+                    drawable.update_grabbed_entity_position(
                         self.room.heightmap.left_offset,
                         self.room.heightmap.top_offset,
                         self.camera_x,
@@ -695,35 +740,24 @@ class Game:
                         tile_h
                     )
                 
-                if self.camera_locked:
+                if is_hero and self.camera_locked:
                     self.center_camera_on_hero()
-            else:
-                # Hero is on or below surface, snap to surface
-                correct_z: float = max_surface_height
-                
-                if hero_pos.z != correct_z:
-                    self.hero.set_world_pos(
-                        hero_pos.x, hero_pos.y, correct_z,
-                        self.room.heightmap.left_offset,
-                        self.room.heightmap.top_offset,
-                        self.camera_x,
-                        self.camera_y
-                    )
-                    
-                    # Update grabbed entity position if carrying something
-                    if self.hero.is_grabbing:
-                        self.hero.update_grabbed_entity_position(
-                            self.room.heightmap.left_offset,
-                            self.room.heightmap.top_offset,
-                            self.camera_x,
-                            self.camera_y,
-                            tile_h
-                        )
-                    
-                    if self.camera_locked:
-                        self.center_camera_on_hero()
-                
-                self.hero.touch_ground = True
+            
+            if is_hero:
+                drawable.touch_ground = True
+
+
+    def apply_gravity(self) -> None:
+        """Apply gravity to hero and all entities"""
+        tile_h = self.room.data.tileheight
+        
+        # Apply gravity to hero
+        self.apply_gravity_to_drawable(self.hero, tile_h, is_hero=True)
+        
+        # Apply gravity to all entities (except grabbed entity)
+        for entity in self.room.entities:
+            if entity is not self.hero.grabbed_entity:
+                self.apply_gravity_to_drawable(entity, tile_h, is_hero=False)
     
     def can_move_to(self, next_x: float, next_y: float, check_cells: List[Tuple[int, int]]) -> bool:
         """Check if hero can move to the given position (heightmap check only)"""
