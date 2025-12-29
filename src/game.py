@@ -754,10 +754,11 @@ class Game:
         # Apply gravity to hero
         self.apply_gravity_to_drawable(self.hero, tile_h, is_hero=True)
         
+        # FIXME problem with raft
         # Apply gravity to all entities (except grabbed entity)
-        for entity in self.room.entities:
-            if entity is not self.hero.grabbed_entity:
-                self.apply_gravity_to_drawable(entity, tile_h, is_hero=False)
+        #for entity in self.room.entities:
+        #    if entity is not self.hero.grabbed_entity:
+        #        self.apply_gravity_to_drawable(entity, tile_h, is_hero=False)
     
     def can_move_to(self, next_x: float, next_y: float, check_cells: List[Tuple[int, int]]) -> bool:
         """Check if hero can move to the given position (heightmap check only)"""
