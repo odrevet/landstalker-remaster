@@ -18,8 +18,8 @@ class Heightmap:
     def load_from_properties(self, properties: Dict[str, Any]) -> None:
         """Load heightmap from TMX room properties."""
         # Get dimensions and offsets from properties
-        width: int = int(properties.get('hmwidth', 0))
-        height: int = int(properties.get('hmheight', 0))
+        self.width: int = int(properties.get('hmwidth', 0))
+        self.height: int = int(properties.get('hmheight', 0))
         self.left_offset = int(properties.get('hmleft', 0))
         self.top_offset = int(properties.get('hmtop', 0))
         
@@ -42,10 +42,10 @@ class Heightmap:
         
         # Convert hex values to cells
         self.cells = []
-        for y in range(height):
+        for y in range(self.height):
             row: List[HeightmapCell] = []
-            for x in range(width):
-                index: int = y * width + x
+            for x in range(self.width):
+                index: int = y * self.width + x
                 if index < len(hex_values):
                     # Remove "0x" prefix if present
                     hex_str: str = hex_values[index].replace('0x', '').replace('0X', '')
@@ -63,7 +63,7 @@ class Heightmap:
                     row.append(HeightmapCell(height=0, walkable=4))
             self.cells.append(row)
         
-        print(f"Loaded heightmap: {width}x{height}, offset=({self.left_offset},{self.top_offset})")
+        print(f"Loaded heightmap: {self.width}x{self.height}, offset=({self.left_offset},{self.top_offset})")
 
     def get_width(self) -> int:
         return len(self.cells[0]) if self.cells else 0

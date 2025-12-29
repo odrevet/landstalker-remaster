@@ -19,6 +19,7 @@ class Drawable:
             z: World Z coordinate (height)
         """
         self._world_pos: Vector3 = Vector3(x, y, z)
+        print(f"SET WORLD POS TO {self._world_pos}")
         self._screen_pos: Vector2 = Vector2()
         
         # Cache for update_screen_pos parameters
@@ -117,33 +118,75 @@ class Drawable:
         self._update_screen_pos(heightmap_left_offset, heightmap_top_offset, camera_x, camera_y)
     
     def _update_screen_pos(self, heightmap_left_offset: int, heightmap_top_offset: int, 
-                          camera_x: float, camera_y: float) -> None:
-        """Update screen position based on world position and camera (private)
+                        camera_x: float, camera_y: float, tilemap_height: int) -> None:
+        """Update screen position based on world position and camera
         
-        This method should be overridden by subclasses if they need custom screen positioning
+        Matches C++ EntityPositionToPixel function exactly
         
         Args:
-            heightmap_left_offset: Heightmap left offset
-            heightmap_top_offset: Heightmap top offset
+            heightmap_left_offset: Heightmap left offset (GetLeft())
+            heightmap_top_offset: Heightmap top offset (GetTop())
             camera_x: Camera X position
             camera_y: Camera Y position
+            tilemap_height: Map height (GetHeight())
         """
-        # Cache the parameters for potential future use
+
+        print("----------------------")
+        print(f"{heightmap_left_offset} {heightmap_top_offset} {tilemap_height}")
+
+        # Cache the parameters
         self._heightmap_left_offset = heightmap_left_offset
         self._heightmap_top_offset = heightmap_top_offset
         self._camera_x = camera_x
         self._camera_y = camera_y
         
-        offset_x: float = (heightmap_left_offset - 12 + 4) * 16
-        offset_y: float = (heightmap_top_offset - 11 + 4) * 16
+        SCALE_FACTOR = 256  # 0x100
         
-        iso_x: float
-        iso_y: float
-        iso_x, iso_y = cartesian_to_iso(self._world_pos.x - offset_x, self._world_pos.y - offset_y)
+        # Scale offsets
+        LEFT = heightmap_left_offset * SCALE_FACTOR
+        TOP = heightmap_top_offset * SCALE_FACTOR
+        HEIGHT = tilemap_height * SCALE_FACTOR
         
-        self._screen_pos.x = iso_x - 16 - camera_x
-        self._screen_pos.y = iso_y - self._world_pos.z - camera_y
-    
+        print(f"{LEFT} {TOP} {HEIGHT}")
+
+        print(f"INITAL TILE POS {self._world_initial_tile_pos}")
+
+        self._world_pos.x = self._world_initial_tile_pos.x * SCALE_FACTOR
+        self._world_pos.y = self._world_initial_tile_pos.y * SCALE_FACTOR
+        self._world_pos.z = self._world_initial_tile_pos.z * SCALE_FACTOR
+
+        print(f" World pos is {self._world_pos}")
+
+        x = self._world_pos.x + 0x80   # +128
+        y = self._world_pos.y - 0x80   # -128
+        z = self._world_pos.z
+
+        print(f" x {x} y {y} z {z}")
+        print(f"LEFT {LEFT} TOP {TOP} HEIGHT {HEIGHT}")
+
+        xx = x - LEFT
+        yy = y - TOP
+
+        print(f"{xx} {yy}")
+
+        ix:int = (xx - yy + (HEIGHT - SCALE_FACTOR)) * 2 + LEFT
+        iy:int = (xx + yy - z * 2) + TOP
+
+        print(f"{ix} {iy}")
+
+        tile_width = 8
+        tile_height = 8
+
+        px:int = (ix * tile_width)  // SCALE_FACTOR
+        py:int = (iy * tile_height) // SCALE_FACTOR
+
+        print(f"{px} {py}")
+
+        print(f"CAM {camera_x} {camera_y}")
+        self._screen_pos.x = px
+        self._screen_pos.y = py
+
+
     def get_screen_pos(self) -> Vector2:
         """Get the object's screen position
         

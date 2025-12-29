@@ -207,6 +207,8 @@ class Entity(Drawable):
         y -= 12
         z: float = data.get('Z', 0.0)
         
+        self._world_initial_tile_pos = Vector3(data.get('X', 0.0), data.get('Y', 0.0), data.get('Z', 0.0))
+
         # Call parent constructor with world position
         super().__init__(x * tile_h, y * tile_h, z * tile_h)
         
@@ -380,41 +382,6 @@ class Entity(Drawable):
         # Only animate if this entity doesn't have a fixed frame
         if self.fixed_frame_index is None and len(self.frames) > 1:
             self.update_animation_frame(advance=True)
-    
-    def _update_screen_pos(self, heightmap_left_offset: int, heightmap_top_offset: int,
-                          camera_x: float, camera_y: float) -> None:
-        """Update screen position based on world position and camera (overridden for Entity-specific offset)
-        
-        Args:
-            heightmap_left_offset: Heightmap left offset
-            heightmap_top_offset: Heightmap top offset
-            camera_x: Camera X position
-            camera_y: Camera Y position
-        """
-        # Cache the parameters
-        self._heightmap_left_offset = heightmap_left_offset
-        self._heightmap_top_offset = heightmap_top_offset
-        self._camera_x = camera_x
-        self._camera_y = camera_y
-        
-        # Note: tile_h is assumed to be 16 for entities
-        tile_h = 16
-        offset_x: float = heightmap_left_offset * tile_h
-        offset_y: float = heightmap_top_offset * tile_h
-        
-        # Convert world position to isometric coordinates
-        iso_x, iso_y = cartesian_to_iso(
-            self._world_pos.x - offset_x + 12 * 16,
-            self._world_pos.y - offset_y + 12 * 16
-        )
-        
-        # Calculate entity height offset
-        ENTITY_HEIGHT: int = int(self.height * 16)
-        
-        # Update screen position with camera offset
-        # The Z coordinate should be SUBTRACTED from iso_y to move entities up when they're higher
-        self._screen_pos.x = iso_x - camera_x
-        self._screen_pos.y = iso_y - self._world_pos.z - ENTITY_HEIGHT - camera_y - 8
     
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the entity on the surface

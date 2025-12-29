@@ -145,7 +145,8 @@ class Room:
                 self.heightmap.left_offset,
                 self.heightmap.top_offset,
                 camera_x,
-                camera_y
+                camera_y,
+                self.background_layer.data.height
             )
         
         # Create a list of all drawable objects (entities + hero)
