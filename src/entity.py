@@ -23,6 +23,13 @@ class Entity(Drawable):
     # Default hitbox values if YAML properties are not available
     _default_hitbox: ClassVar[Tuple[float, float, float]] = (1.0, 1.0, 1.0)
     
+    # Specific item frame mappings (entity_id -> (frame_index, animation_number))
+    # Items always use 8 frames (indices 0-7) from the sprite sheet
+    _item_frame_map: ClassVar[Dict[int, Tuple[int, str]]] = {
+        230: (6, "004"),  # Island Map - frame 6, animation 004
+        229: (5, "004"),  # Hotel Register - frame 5, animation 004
+    }
+    
     @classmethod
     def _load_entity_properties(cls, entity_id: int) -> Optional[Dict[str, Any]]:
         """Load entity properties from EntityXXXProperties.yaml file
@@ -109,15 +116,21 @@ class Entity(Drawable):
             print(f"  _get_sprite_info: No Label found in sprite properties for sprite ID {sprite_id}")
             return None
         
-        # Determine animation number based on orientation
-        # NW and NE use Anim000, SE and SW use Anim001
-        anim_num = "000"
-        if self.orientation in ["SE", "SW"]:
-            anim_num = "001"
+        # Check if this entity is an item with specific animation mapping
+        if self.entity_id in self._item_frame_map:
+            # Items use their specific animation number
+            _, anim_num = self._item_frame_map[self.entity_id]
+            print(f"  _get_sprite_info: Entity is a mapped item, using animation {anim_num}")
+        else:
+            # Determine animation number based on orientation
+            # NW and NE use Anim000, SE and SW use Anim001
+            anim_num = "000"
+            if self.orientation in ["SE", "SW"]:
+                anim_num = "001"
+            print(f"  _get_sprite_info: Using animation {anim_num} for orientation {self.orientation}")
         
         # Construct sprite file path: data/sprites/SpriteGfxXXXAnimXXX.png
         sprite_file = f"data/sprites/{label}Anim{anim_num}.png"
-        print(f"  _get_sprite_info: Using animation {anim_num} for orientation {self.orientation}")
         
         # Get hitbox to determine frame width
         hitbox = sprite_props.get('Hitbox', {})
@@ -136,19 +149,25 @@ class Entity(Drawable):
         else:
             frame_width = 256
         
-        # Get frame count from animation properties
-        animation = sprite_props.get('Animation', {})
-        idle_frame_count = animation.get('IdleAnimationFrameCount', 0)
-        walk_frame_count = animation.get('WalkCycleFrameCount', 0)
-        
-        # Use the maximum frame count available, default to 1 if both are 0
-        frame_count = max(idle_frame_count, walk_frame_count)
-        if frame_count == 0:
-            frame_count = 1
-            print(f"  _get_sprite_info: No animation frames specified, defaulting to 1")
+        # Check if this entity is an item with specific frame mapping
+        if self.entity_id in self._item_frame_map:
+            # Items always have 8 frames (indices 0-7)
+            frame_count = 8
+            print(f"  _get_sprite_info: Entity is a mapped item, hardcoding frame_count to 8")
+        else:
+            # Get frame count from animation properties
+            animation = sprite_props.get('Animation', {})
+            idle_frame_count = animation.get('IdleAnimationFrameCount', 0)
+            walk_frame_count = animation.get('WalkCycleFrameCount', 0)
+            
+            # Use the maximum frame count available, default to 1 if both are 0
+            frame_count = max(idle_frame_count, walk_frame_count)
+            if frame_count == 0:
+                frame_count = 1
+                print(f"  _get_sprite_info: No animation frames specified, defaulting to 1")
         
         print(f"  _get_sprite_info: label={label}, frame_width={frame_width}, frame_count={frame_count}")
-        return (sprite_file, frame_width, frame_count)
+        return (sprite_file, frame_width, frame_count, label)
     
     @classmethod
     def _get_hitbox_from_yaml(cls, sprite_id: int) -> Tuple[float, float, float]:
@@ -254,6 +273,7 @@ class Entity(Drawable):
         self.frame_width: int = 32  # Width of each frame (will be set by sprite properties)
         self.frame_count: int = 1  # Number of frames (will be set by sprite properties)
         self.sprite_missing: bool = False  # Flag to indicate missing sprite
+        self.fixed_frame_index: Optional[int] = None  # For items that use a specific frame
         
         # Animation timing (Entity-specific speed)
         self.animation_speed = 0.1  # Seconds per frame
@@ -285,6 +305,11 @@ class Entity(Drawable):
         """Load sprite for this entity using sprite ID from entity properties"""
         print(f"Loading sprite for {self.name} (Entity ID: {self.entity_id}, Sprite ID: {self.sprite_id})")
         
+        # Check if this is an item with a specific frame mapping (by entity_id)
+        if self.entity_id in self._item_frame_map:
+            self.fixed_frame_index, _ = self._item_frame_map[self.entity_id]
+            print(f"  Item entity {self.entity_id} ('{self.name}') uses fixed frame index: {self.fixed_frame_index}")
+        
         # Get sprite information from sprite properties
         sprite_info = self._get_sprite_info(self.sprite_id)
         
@@ -293,7 +318,7 @@ class Entity(Drawable):
             self.sprite_missing = True
             return
         
-        sprite_file, frame_width, frame_count = sprite_info
+        sprite_file, frame_width, frame_count, label = sprite_info
         self.frame_width = frame_width
         self.frame_count = frame_count
         print(f"  Sprite info: file={sprite_file}, frame_width={frame_width}, frame_count={frame_count}")
@@ -329,11 +354,20 @@ class Entity(Drawable):
         # Store frames in animation dictionary (using "idle" as default animation)
         self.animations["idle"] = self.frames
         
-        # Set initial animation
+        # Set initial image based on whether this item has a fixed frame
         if self.frames:
             self.current_animation = "idle"
-            self.image = self.frames[0]
-            print(f"  Set initial image to frame 0: {self.image}")
+            
+            # Use fixed frame index for specific items, otherwise use frame 0
+            if self.fixed_frame_index is not None and self.fixed_frame_index < len(self.frames):
+                self.image = self.frames[self.fixed_frame_index]
+                self.current_frame = self.fixed_frame_index
+                print(f"  Set initial image to fixed frame {self.fixed_frame_index}: {self.image}")
+            else:
+                if self.fixed_frame_index is not None and self.fixed_frame_index >= len(self.frames):
+                    print(f"  WARNING: Fixed frame index {self.fixed_frame_index} is out of range (only {len(self.frames)} frames), using frame 0")
+                self.image = self.frames[0]
+                print(f"  Set initial image to frame 0: {self.image}")
         else:
             print(f"  ERROR: No frames were extracted!")
     
@@ -343,8 +377,8 @@ class Entity(Drawable):
         Args:
             dt: Delta time in seconds
         """
-        # Use base class animation frame update
-        if len(self.frames) > 1:
+        # Only animate if this entity doesn't have a fixed frame
+        if self.fixed_frame_index is None and len(self.frames) > 1:
             self.update_animation_frame(advance=True)
     
     def _update_screen_pos(self, heightmap_left_offset: int, heightmap_top_offset: int,
