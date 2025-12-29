@@ -131,8 +131,8 @@ class Drawable:
             tilemap_height: Map height (GetHeight())
         """
 
-        print("----------------------")
-        print(f"{heightmap_left_offset} {heightmap_top_offset} {tilemap_height}")
+        #print("----------------------")
+        #print(f"{heightmap_left_offset} {heightmap_top_offset} {tilemap_height}")
 
         # Cache the parameters
         self._heightmap_left_offset = heightmap_left_offset
@@ -147,32 +147,32 @@ class Drawable:
         TOP = heightmap_top_offset * SCALE_FACTOR
         HEIGHT = tilemap_height * SCALE_FACTOR
         
-        print(f"{LEFT} {TOP} {HEIGHT}")
+        #print(f"{LEFT} {TOP} {HEIGHT}")
 
-        print(f"INITAL TILE POS {self._world_initial_tile_pos}")
+        #print(f"INITAL TILE POS {self._world_initial_tile_pos}")
 
         self._world_pos.x = self._world_initial_tile_pos.x * SCALE_FACTOR
         self._world_pos.y = self._world_initial_tile_pos.y * SCALE_FACTOR
         self._world_pos.z = self._world_initial_tile_pos.z * SCALE_FACTOR
 
-        print(f" World pos is {self._world_pos}")
+        #print(f" World pos is {self._world_pos}")
 
         x = self._world_pos.x + 0x80   # +128
         y = self._world_pos.y - 0x80   # -128
         z = self._world_pos.z
 
-        print(f" x {x} y {y} z {z}")
-        print(f"LEFT {LEFT} TOP {TOP} HEIGHT {HEIGHT}")
+        #print(f" x {x} y {y} z {z}")
+        #print(f"LEFT {LEFT} TOP {TOP} HEIGHT {HEIGHT}")
 
         xx = x - LEFT
         yy = y - TOP
 
-        print(f"{xx} {yy}")
+        #print(f"{xx} {yy}")
 
         ix:int = (xx - yy + (HEIGHT - SCALE_FACTOR)) * 2 + LEFT
         iy:int = (xx + yy - z * 2) + TOP
 
-        print(f"{ix} {iy}")
+        #print(f"{ix} {iy}")
 
         tile_width = 8
         tile_height = 8
@@ -180,11 +180,12 @@ class Drawable:
         px:int = (ix * tile_width)  // SCALE_FACTOR
         py:int = (iy * tile_height) // SCALE_FACTOR
 
-        print(f"{px} {py}")
+        #print(f"{px} {py}")
+        #print(f"CAM {camera_x} {camera_y}")
 
-        print(f"CAM {camera_x} {camera_y}")
-        self._screen_pos.x = px
-        self._screen_pos.y = py
+
+        self._screen_pos.x = px - camera_x
+        self._screen_pos.y = py - camera_y
 
 
     def get_screen_pos(self) -> Vector2:
