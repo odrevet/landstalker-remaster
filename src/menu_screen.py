@@ -51,8 +51,8 @@ class MenuScreen:
         # Menu content label
         menu_content = ("")
         
-        self.main_content_label = pygame_gui.elements.UITextBox(
-            html_text=menu_content,
+        self.main_content_label = pygame_gui.elements.UILabel(
+            text=menu_content,
             relative_rect=pygame.Rect((10, main_y + 10), (display_width - 20, self.main_height - 20)),
             manager=self.manager,
             object_id="#menu_content"
@@ -69,11 +69,11 @@ class MenuScreen:
         )
         
         footer_text = (
-            "USE EQUIPE"
+            "USE    EQUIPE"
         )
         
-        self.footer_label = pygame_gui.elements.UITextBox(
-            html_text=footer_text,
+        self.footer_label = pygame_gui.elements.UILabel(
+            text=footer_text,
             relative_rect=pygame.Rect((10, footer_y + 10), (display_width - 20, self.footer_height - 20)),
             manager=self.manager,
             object_id="#menu_footer"
