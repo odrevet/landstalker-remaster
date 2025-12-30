@@ -6,6 +6,7 @@ from utils import cartesian_to_iso
 if TYPE_CHECKING:
     from boundingbox import BoundingBox
 
+SCALE_FACTOR = 256  # 0x100
 
 class Drawable:
     """Base class for drawable game objects with position management and animation support"""
@@ -18,7 +19,9 @@ class Drawable:
             y: World Y coordinate
             z: World Z coordinate (height)
         """
-        self._world_pos: Vector3 = Vector3(x, y, z)
+        self._world_pos: Vector3 = Vector3(x * SCALE_FACTOR, y * SCALE_FACTOR, z * SCALE_FACTOR)
+        self.prev_world_pos = self._world_pos.copy()
+
         print(f"SET WORLD POS TO {self._world_pos}")
         self._screen_pos: Vector2 = Vector2()
         
@@ -41,7 +44,7 @@ class Drawable:
         self.animation_speed: float = 0.15  # Default animation speed
         self.animation_timer: float = 0.0
     
-        self.prev_world_pos = Vector3(x, y, z)
+
 
     def get_position_delta(self) -> tuple:
         """Get the change in position since last frame"""
@@ -129,60 +132,27 @@ class Drawable:
             camera_x: Camera X position
             camera_y: Camera Y position
             tilemap_height: Map height (GetHeight())
-        """
-
-        #print("----------------------")
-        #print(f"{heightmap_left_offset} {heightmap_top_offset} {tilemap_height}")
-
-        # Cache the parameters
-        self._heightmap_left_offset = heightmap_left_offset
-        self._heightmap_top_offset = heightmap_top_offset
-        self._camera_x = camera_x
-        self._camera_y = camera_y
-        
-        SCALE_FACTOR = 256  # 0x100
-        
+        """    
         # Scale offsets
         LEFT = heightmap_left_offset * SCALE_FACTOR
         TOP = heightmap_top_offset * SCALE_FACTOR
         HEIGHT = tilemap_height * SCALE_FACTOR
-        
-        #print(f"{LEFT} {TOP} {HEIGHT}")
-
-        #print(f"INITAL TILE POS {self._world_initial_tile_pos}")
-
-        self._world_pos.x = self._world_initial_tile_pos.x * SCALE_FACTOR
-        self._world_pos.y = self._world_initial_tile_pos.y * SCALE_FACTOR
-        self._world_pos.z = self._world_initial_tile_pos.z * SCALE_FACTOR
-
-        #print(f" World pos is {self._world_pos}")
 
         x = self._world_pos.x + 0x80   # +128
         y = self._world_pos.y - 0x80   # -128
         z = self._world_pos.z
 
-        #print(f" x {x} y {y} z {z}")
-        #print(f"LEFT {LEFT} TOP {TOP} HEIGHT {HEIGHT}")
-
         xx = x - LEFT
         yy = y - TOP
 
-        #print(f"{xx} {yy}")
-
         ix:int = (xx - yy + (HEIGHT - SCALE_FACTOR)) * 2 + LEFT
         iy:int = (xx + yy - z * 2) + TOP
-
-        #print(f"{ix} {iy}")
 
         tile_width = 8
         tile_height = 8
 
         px:int = (ix * tile_width)  // SCALE_FACTOR
         py:int = (iy * tile_height) // SCALE_FACTOR
-
-        #print(f"{px} {py}")
-        #print(f"CAM {camera_x} {camera_y}")
-
 
         self._screen_pos.x = px - camera_x # - 18
         self._screen_pos.y = py - camera_y # - 32

@@ -202,15 +202,11 @@ class Entity(Drawable):
         """
         # Initialize world position from TMX coordinates
         x: float = data.get('X', 0.0)
-        x -= 12
         y: float = data.get('Y', 0.0)
-        y -= 12
         z: float = data.get('Z', 0.0)
-        
-        self._world_initial_tile_pos = Vector3(data.get('X', 0.0), data.get('Y', 0.0), data.get('Z', 0.0))
 
         # Call parent constructor with world position
-        super().__init__(x * tile_h, y * tile_h, z * tile_h)
+        super().__init__(x, y, z)
         
         # Basic identification
         self.entity_id: int = data.get('Type', 0)  # Entity ID from TMX
