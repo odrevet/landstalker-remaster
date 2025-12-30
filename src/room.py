@@ -187,8 +187,7 @@ class Room:
         Matches editor IsoToPixel formula from Tilemap3D.cpp:
         """
         # Layer offset: BG layer has offset of 2, FG layer has offset of 0
-        layer_offset = 0#2 if is_background else 0
-        use_offset = True
+        layer_offset = 0 #2 if use_offset else 0
 
         # Get offsets from heightmap (only if offset flag is true)
         left_offset = self.heightmap.left_offset if use_offset else 0
@@ -245,7 +244,7 @@ class Room:
                 ]
                 tiles_rect: List[pygame.Rect] = [top_left_rect, top_right_rect, bottom_left_rect, bottom_right_rect]
 
-                screen_x, screen_y = self.iso_to_pixel(x, y, is_background, map_height, tile_width, tile_height, use_offset=is_background)
+                screen_x, screen_y = self.iso_to_pixel(x, y, is_background, map_height, tile_width, tile_height, True)
 
                 print(
                     "[populate_layer]\n"
