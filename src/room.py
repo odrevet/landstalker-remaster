@@ -73,7 +73,7 @@ class Room:
         print(f"loading {tmx_filename}")
         self.data = load_pygame(tmx_filename)
 
-        # Load room properties
+        # Load room properties FIRST
         self.room_properties = {}
         if hasattr(self.data, "properties") and self.data.properties:
             for key, value in self.data.properties.items():
@@ -83,10 +83,12 @@ class Room:
         for k, v in self.room_properties.items():
             print(f"  {k}: {v}")
 
-        # Load heightmap from properties
+        # Load heightmap from properties BEFORE populating layers
         self.heightmap.load_from_properties(self.room_properties)
+        
+        print(f"Heightmap offsets: left={self.heightmap.left_offset}, top={self.heightmap.top_offset}")
 
-
+        # Now populate layers with correct heightmap offsets
         self.background_layer = Layer()
         self.background_layer.data = self.data.get_layer_by_name("Background")
         self.populate_layer(self.background_layer, is_background=True)
@@ -96,7 +98,6 @@ class Room:
         self.populate_layer(self.foreground_layer, is_background=False)
         
         self.room_number = room_number
-
 
         # Load warps as Warp objects
         self.warps = []
@@ -179,27 +180,25 @@ class Room:
             obj.draw(surface)
 
     def iso_to_pixel(self, iso_x: int, iso_y: int, is_background: bool, 
-                    map_height: int, tile_width: int, tile_height: int, 
-                    use_offset: bool = True) -> Tuple[int, int]:
+                     map_height: int, tile_width: int, tile_height: int, 
+                     use_offset: bool = True) -> Tuple[int, int]:
         """
         Convert isometric coordinates to pixel coordinates.
-        
-        int layer_offset = (layer == Layer::BG) ? 2 : 0;
-        int left_offset = offset ? GetLeft() : 0;
-        int top_offset = offset ? GetTop() : 0;
-        return {
-            ((iso.x - iso.y + (GetHeight() - 1)) * 2 + left_offset + layer_offset) * tile_width,
-            (iso.x + iso.y + top_offset) * tile_height
-        };
+        Matches editor IsoToPixel formula from Tilemap3D.cpp:
         """
         # Layer offset: BG layer has offset of 2, FG layer has offset of 0
-        layer_offset = 2 if is_background else 0
-        
+        layer_offset = 0#2 if is_background else 0
+        use_offset = True
+
         # Get offsets from heightmap (only if offset flag is true)
         left_offset = self.heightmap.left_offset if use_offset else 0
         top_offset = self.heightmap.top_offset if use_offset else 0
         
+        # Apply the C++ formula exactly
+        # X coordinate: ((iso.x - iso.y + (GetHeight() - 1)) * 2 + left_offset + layer_offset) * tile_width
         pixel_x = ((iso_x - iso_y + (map_height - 1)) * 2 + left_offset + layer_offset) * tile_width
+        
+        # Y coordinate: (iso.x + iso.y + top_offset) * tile_height
         pixel_y = (iso_x + iso_y + top_offset) * tile_height
         
         return pixel_x, pixel_y
@@ -210,6 +209,8 @@ class Room:
         tile_width = 8   # Each sub-tile is 8 pixels wide
         tile_height = 8  # Each sub-tile is 8 pixels tall
         map_height = layer.data.height
+        
+        layer_name = "Background" if is_background else "Foreground"
         
         for y in range(layer.data.height):
             for x in range(layer.data.width):
@@ -244,17 +245,20 @@ class Room:
                 ]
                 tiles_rect: List[pygame.Rect] = [top_left_rect, top_right_rect, bottom_left_rect, bottom_right_rect]
 
-                # Calculate screen position
-                screen_x, screen_y = self.iso_to_pixel(x, y, is_background, map_height, tile_width, tile_height, True)
+                screen_x, screen_y = self.iso_to_pixel(x, y, is_background, map_height, tile_width, tile_height, use_offset=is_background)
 
                 print(
                     "[populate_layer]\n"
                     f"  Map XY        : ({x}, {y})\n"
-                    f"  Layer         : {layer.name if hasattr(layer, 'name') else layer}\n"
+                    f"  Layer         : {layer_name}\n"
                     f"  Background    : {is_background}\n"
+                    f"  Offset        : True\n"
                     f"  GID           : 0x{gid:X}\n"
                     f"  Tile Size     : ({tile_w}, {tile_h})\n"
                     f"  SubTile Size  : ({tile_width}, {tile_height})\n"
+                    f"  Map Height    : {map_height}\n"
+                    f"  Left Offset   : {self.heightmap.left_offset}\n"
+                    f"  Top Offset    : {self.heightmap.top_offset}\n"
                     f"  Pixel XY      : ({screen_x}, {screen_y})\n"
                     "----------------------------------------"
                 )
