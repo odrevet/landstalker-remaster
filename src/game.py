@@ -14,7 +14,7 @@ from hero import Hero
 from utils import *
 from room import Room
 from heightmap import Heightmap, HeightmapCell
-from debug import draw_heightmap, draw_warps, draw_boundbox
+from debug import draw_heightmap, draw_warps, draw_boundbox, draw_heightmap_visualization
 from collision import (resolve_entity_collision, get_entity_top_at_position, check_collids_entity, get_entity_hero_is_standing_on, 
                       get_entity_in_front_of_hero, can_place_entity_at_position, get_position_in_front_of_hero, get_touching_entities,
                       update_carried_positions, check_entity_collision_3d)
@@ -1287,8 +1287,8 @@ class Game:
 
         if self.debug_mode:
             if self.is_height_map_displayed:
-                draw_heightmap(self.surface, self.room.heightmap, self.room.data.tileheight, 
-                            self.camera_x, self.camera_y)
+                draw_heightmap_visualization(self.surface, self.room.heightmap, self.room,
+                            self.camera_x, self.camera_y, 150)
 
             if self.is_boundbox_displayed:
                 draw_boundbox(self.hero.bbox, self.surface, self.room.data.tileheight, 

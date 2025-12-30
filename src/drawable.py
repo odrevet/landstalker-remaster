@@ -184,8 +184,8 @@ class Drawable:
         #print(f"CAM {camera_x} {camera_y}")
 
 
-        self._screen_pos.x = px - camera_x
-        self._screen_pos.y = py - camera_y
+        self._screen_pos.x = px - camera_x # - 18
+        self._screen_pos.y = py - camera_y # - 32
 
 
     def get_screen_pos(self) -> Vector2:
