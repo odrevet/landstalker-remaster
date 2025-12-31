@@ -39,37 +39,37 @@ python src/main.py -r 595
 * Game start location after intro
 
 ```
-python src/main.py -r 148 -x 320 -y 400 -z 128 --debug
+python src/main.py -r 148 -x 20 -y 25 -z 8 --debug
 ```
 
 * Load room 240 and set player location, enable debug
 
 ```
-python src/main.py -r 240 -x 380 -y 120 -z 16 --debug
+python src/main.py -r 240 -x 23.75 -y 7.5 -z 1 --debug
 ```
 
 * Before falling to raft: Test fall warp and entity script
 
 ```
-python src/main.py -r 159 -x 200 -y 600 -z 32 --debug
+python src/main.py -r 159 -x 12.5 -y 37.5 -z 2 --debug
 ```
 
 * Test entity placement, chests, tilemap culling
 
 ```
-python src/main.py -r 153 -x 200 -y 100 -z 48 --debug
+python src/main.py -r 153 -x 12.5 -y 6.25 -z 3 --debug
 ```
 
 * Test crate
 
 ```
-python src/main.py -r 157 -x 400 -y 300 -z 0 --debug
+python src/main.py -r 157 -x 25 -y 18 -z 0 --debug
 ```
 
 * Massan Inn (test map and register)
 
 ```
-python src/main.py -r 598 -x 350 -y 210 -z 0 --debug
+python src/main.py -r 598 -x 19 -y 27 -z 8 --debug
 ```
 
 # Keys
