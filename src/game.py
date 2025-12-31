@@ -509,14 +509,14 @@ class Game:
         hero_x, hero_y, hero_width, hero_height = self.hero.get_bounding_box(tile_h)
         
         # Calculate current tile (using center of hero's bounding box)
-        current_tile_x: int = int((hero_x + hero_width // 2) // tile_h)
-        current_tile_y: int = int((hero_y + hero_height // 2) // tile_h)
+        current_tile_x: int = int((hero_x + hero_width // 2))
+        current_tile_y: int = int((hero_y + hero_height // 2))
         
         # Only check warps if hero has moved to a different tile
         if (current_tile_x == self.prev_hero_tile_x and 
             current_tile_y == self.prev_hero_tile_y):
             return False
-        
+
         # Update previous tile position
         self.prev_hero_tile_x = current_tile_x
         self.prev_hero_tile_y = current_tile_y
@@ -536,6 +536,10 @@ class Game:
                             print("raft: skip warp back to 168")
                             return False
 
+                        dest_tile_x, dest_tile_y = warp.get_destination(self.room_number, self.room.heightmap)
+                        dest_cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(dest_tile_x, dest_tile_y)
+                        dest_tile_z: int = dest_cell.height if dest_cell else 0
+
                         self.room_number = target_room
                         current_bgm = self.room.room_properties["RoomBGM"]
                         self.room.load(self.room_number)
@@ -543,20 +547,16 @@ class Game:
                         if current_bgm != self.room.room_properties["RoomBGM"]:
                             self.play_room_bgm()
 
-                        dest_tile_x, dest_tile_y = warp.get_destination(self.room_number, self.room.heightmap)
-                        dest_cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(dest_tile_x, dest_tile_y)
-                        dest_tile_z: int = dest_cell.height if dest_cell else 0
-
                         # PATCH: Adjust destination in raft sequence
                         if self.room_number == 168 or self.room_number == 169:
                             print("Warp: adjust warp")
                             dest_tile_x -= 1
                             dest_tile_y += 1
 
-                        # NEW: Set position in tile coordinates (center of tile)
+                        # Set position in tile coordinates (center of tile)
                         self.hero.set_world_pos(
-                            dest_tile_x + 0.5,  # Center of tile
-                            dest_tile_y + 0.5,
+                            dest_tile_x,
+                            dest_tile_y,
                             dest_tile_z,
                             self.room.heightmap.left_offset,
                             self.room.heightmap.top_offset,
