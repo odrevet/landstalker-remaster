@@ -1184,7 +1184,7 @@ class Game:
             tile_z: float = hero_pos.z // tile_h
             
             self.coord_label.set_text(
-                f"X: {hero_pos.x:.1f} ({tile_x:.0f}), Y: {hero_pos.y:.1f} ({tile_y:.0f}), Z: {hero_pos.z:.1f} ({tile_z:.0f})\n "
+                f"X {hero_pos.x:.1f} Y {hero_pos.y:.1f} Z {hero_pos.z:.1f}\n "
             )
 
     def load_compressed_strings(self, filepath: str) -> list[str]:
