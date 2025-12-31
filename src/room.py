@@ -168,7 +168,7 @@ class Room:
         # Add hero with their sort key
         if hero.get_world_pos() is not None:
             # Hero is 2 tiles tall, so use their full height for sorting
-            hero_height = hero.HEIGHT * tile_h  # Hero height in world units (2 tiles)
+            hero_height = hero.height * tile_h  # Hero height in world units (2 tiles)
             sort_key = hero.get_world_pos().y + hero.get_world_pos().z + hero_height
             drawable_objects.append((sort_key, hero))
         

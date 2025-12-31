@@ -25,7 +25,7 @@ class Hero(Drawable):
         super().__init__(x, y, z)
         
         # Physical properties
-        self.HEIGHT: int = 2   # Height in tiles
+        self.height: int = 2   # Height in tiles
         
         # Set animation speed
         self.animation_speed = self.ANIMATION_SPEED
@@ -53,7 +53,7 @@ class Hero(Drawable):
         self.grabbed_entity: Optional['Entity'] = None
         
         # Collision detection
-        self.bbox: BoundingBox = BoundingBox(self._world_pos, self.HEIGHT)
+        self.bbox: BoundingBox = BoundingBox(self._world_pos, self.height)
     
     def _load_animations(self) -> None:
         """Load all hero animation spritesheets and extract frames"""
@@ -204,6 +204,24 @@ class Hero(Drawable):
         direction = direction_map.get(self.facing_direction, "front")
         return f"{prefix}{state}_{direction}"
 
+    def _update_screen_pos(
+        self,
+        heightmap_left_offset: int,
+        heightmap_top_offset: int,
+        camera_x: float,
+        camera_y: float,
+        tilemap_height: int
+    ) -> None:
+        super()._update_screen_pos(
+            heightmap_left_offset,
+            heightmap_top_offset,
+            camera_x,
+            camera_y,
+            tilemap_height
+        )
+        self._screen_pos.y += 12 * 16
+
+
     def _update_frame_index(self, is_moving: bool) -> None:
         """Update the current frame index based on animation state
         
@@ -258,38 +276,6 @@ class Hero(Drawable):
         else:
             self.facing_direction = "UP" if dy < 0 else "DOWN"
     
-    def _update_screen_pos(self, heightmap_left_offset: int, heightmap_top_offset: int, 
-                          camera_x: float, camera_y: float) -> None:
-        """Update screen position based on world position and camera
-        
-        Overridden to apply Hero-specific isometric positioning
-        
-        Args:
-            heightmap_left_offset: Heightmap left offset
-            heightmap_top_offset: Heightmap top offset
-            camera_x: Camera X position
-            camera_y: Camera Y position
-        """
-        # Cache parameters
-        self._heightmap_left_offset = heightmap_left_offset
-        self._heightmap_top_offset = heightmap_top_offset
-        self._camera_x = camera_x
-        self._camera_y = camera_y
-        
-        # Calculate world-to-screen offset
-        offset_x = (heightmap_left_offset - 8) * 16
-        offset_y = (heightmap_top_offset - 8) * 16
-        
-        # Convert to isometric screen coordinates
-        iso_x, iso_y = cartesian_to_iso(
-            self._world_pos.x - offset_x, 
-            self._world_pos.y - offset_y
-        )
-        
-        # Apply hero sprite positioning (32 pixels tall)
-        self._screen_pos.x = iso_x - camera_x
-        self._screen_pos.y = iso_y - self._world_pos.z - camera_y + 32
-    
     def grab_entity(self, entity: 'Entity') -> None:
         """Start grabbing an entity
         
@@ -317,7 +303,8 @@ class Hero(Drawable):
         return self.is_grabbing and self.grabbed_entity is not None
     
     def update_grabbed_entity_position(self, left_offset: int, top_offset: int, 
-                                      camera_x: float, camera_y: float, tile_h: int) -> None:
+                                      camera_x: float, camera_y: float, 
+                                      tile_h: int, tilemap_height: int) -> None:
         """Update the position of the grabbed entity to be above the hero
         
         Args:
@@ -326,13 +313,14 @@ class Hero(Drawable):
             camera_x: Camera X position
             camera_y: Camera Y position
             tile_h: Tile height in pixels
+            tilemap_height: Map height in tiles
         """
         if not self.has_grabbed_entity():
             return
         
         # Position entity directly above hero (HEIGHT tiles higher in Z)
         hero_pos = self.get_world_pos()
-        entity_z = hero_pos.z + (self.HEIGHT * tile_h)
+        entity_z = hero_pos.z + (self.height * tile_h)
         
         # Update entity world and screen position
         self.grabbed_entity.set_world_pos(
@@ -342,7 +330,8 @@ class Hero(Drawable):
             left_offset,
             top_offset,
             camera_x,
-            camera_y
+            camera_y,
+            tilemap_height
         )
     
     def __repr__(self) -> str:
