@@ -889,10 +889,10 @@ class Game:
             print(f"Trying to move LEFT: next_x={next_x:.3f} (tiles)")
 
             # Calculate new corner positions after movement (in pixels for heightmap check)
-            new_top_x: int = int((corners[3][0] - HERO_SPEED) // tile_h)
-            new_top_y: int = int(corners[3][1] // tile_h)
-            new_left_x: int = int((corners[0][0] - HERO_SPEED) // tile_h)
-            new_left_y: int = int(corners[0][1] // tile_h)
+            new_top_x: int = int((corners[3][0] - movement_speed))
+            new_top_y: int = int(corners[3][1])
+            new_left_x: int = int((corners[0][0] - movement_speed))
+            new_left_y: int = int(corners[0][1])
             
             # fixme !
             print(f"Checking cells: top=({new_top_x}, {new_top_y}), left=({new_left_x}, {new_left_y})")
@@ -907,10 +907,10 @@ class Game:
             next_x: float = hero_pos.x + movement_speed
             
             # Calculate new corner positions after movement
-            new_right_x: int = int((corners[2][0] + HERO_SPEED) // tile_h)
-            new_right_y: int = int(corners[2][1] // tile_h)
-            new_bottom_x: int = int((corners[1][0] + HERO_SPEED) // tile_h)
-            new_bottom_y: int = int((corners[1][1]) // tile_h)
+            new_right_x: int = int((corners[2][0] + movement_speed))
+            new_right_y: int = int(corners[2][1])
+            new_bottom_x: int = int((corners[1][0] + movement_speed))
+            new_bottom_y: int = int((corners[1][1]))
             
             if new_right_x < self.room.heightmap.get_width() and self.can_move_to(
                 next_x, hero_pos.y, [(new_right_x, new_right_y), (new_bottom_x, new_bottom_y)]
@@ -922,10 +922,10 @@ class Game:
             next_y: float = hero_pos.y - movement_speed
             
             # Calculate new corner positions after movement
-            new_top_x: int = int(corners[3][0] // tile_h)
-            new_top_y: int = int((corners[3][1] - HERO_SPEED) // tile_h)
-            new_right_x: int = int(corners[2][0] // tile_h)
-            new_right_y: int = int((corners[2][1] - HERO_SPEED) // tile_h)
+            new_top_x: int = int(corners[3][0])
+            new_top_y: int = int((corners[3][1] - movement_speed))
+            new_right_x: int = int(corners[2][0])
+            new_right_y: int = int((corners[2][1] - movement_speed))
             
             if next_y > 0 and self.can_move_to(hero_pos.x, next_y, [
                 (new_top_x, new_top_y), (new_right_x, new_right_y)
@@ -937,10 +937,10 @@ class Game:
             next_y: float = hero_pos.y + movement_speed
             
             # Calculate new corner positions after movement
-            new_left_x: int = int(corners[0][0] // tile_h)
-            new_left_y: int = int((corners[0][1] + HERO_SPEED) // tile_h)
-            new_bottom_x: int = int(corners[1][0] // tile_h)
-            new_bottom_y: int = int((corners[1][1] + HERO_SPEED) // tile_h)
+            new_left_x: int = int(corners[0][0])
+            new_left_y: int = int((corners[0][1] + movement_speed))
+            new_bottom_x: int = int(corners[1][0])
+            new_bottom_y: int = int((corners[1][1] + movement_speed))
             
             if new_left_y < self.room.heightmap.get_height() and self.can_move_to(
                 hero_pos.x, next_y, [(new_left_x, new_left_y), (new_bottom_x, new_bottom_y)]
