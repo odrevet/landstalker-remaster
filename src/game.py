@@ -276,11 +276,9 @@ class Game:
                 for x in range(self.room.heightmap.get_width()):
                     cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(x, y)
                     if cell and cell.is_walkable():
-                        # NEW: World coordinates are in tiles, not pixels
-                        # Center of tile (x, y) is at (x + 0.5, y + 0.5)
-                        new_x: float = x + 0.5
-                        new_y: float = y + 0.5
-                        new_z: float = cell.height  # Z is also in tiles now
+                        new_x: float = x
+                        new_y: float = y
+                        new_z: float = cell.height
                         
                         self.hero.set_world_pos(
                             new_x, new_y, new_z,
@@ -619,14 +617,14 @@ class Game:
         drawable_bbox = drawable.get_bounding_box(tile_h)
         
         # Get tile coordinates for each corner
-        left_x = int(corners[0][0] // tile_h)
-        left_y = int(corners[0][1] // tile_h)
-        bottom_x = int(corners[1][0] // tile_h)
-        bottom_y = int(corners[1][1] // tile_h)
-        right_x = int(corners[2][0] // tile_h)
-        right_y = int(corners[2][1] // tile_h)
-        top_x = int(corners[3][0] // tile_h)
-        top_y = int(corners[3][1] // tile_h)
+        left_x = int(corners[0][0])
+        left_y = int(corners[0][1])
+        bottom_x = int(corners[1][0])
+        bottom_y = int(corners[1][1])
+        right_x = int(corners[2][0])
+        right_y = int(corners[2][1])
+        top_x = int(corners[3][0])
+        top_y = int(corners[3][1])
         
         # Clamp to valid range
         map_width = self.room.heightmap.get_width()
@@ -643,7 +641,7 @@ class Game:
         
         cells = self.room.heightmap.cells
         
-        # NEW: Heights are in tiles now (not pixels)
+        # Heights are in tiles now
         max_ground_height = max(
             cells[top_y][top_x].height,
             cells[bottom_y][bottom_x].height,
@@ -682,8 +680,8 @@ class Game:
         
         tilemap_height = self.get_tilemap_height()
         
-        # NEW: Gravity in tiles per frame
-        gravity_tiles = GRAVITY / tile_h  # 3.0 pixels / 16 = 0.1875 tiles per frame
+        # Gravity in tiles per frame
+        gravity_tiles = GRAVITY / tile_h
         
         if max_surface_height < height_at_bottom:
             # Falling
