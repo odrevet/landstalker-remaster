@@ -1,5 +1,5 @@
 """
-Script command handlers for entity behaviors with smooth movement
+Script command handlers for entity behaviors with smooth tile-based movement
 """
 from typing import Dict, Any, Optional
 import yaml
@@ -73,46 +73,53 @@ class ScriptCommands:
     def cmd_move_relative(self, params: Dict[str, Any]) -> bool:
         """Move entity relative to current position (smoothly over time)
         
+        All coordinates are in tiles. Movement speed is in tiles per frame.
+        
         Args:
-            params: Dictionary containing 'Distance' parameter
+            params: Dictionary containing 'Distance' parameter (in tiles)
             
         Returns:
             True if command is complete, False if still in progress
         """
         # Initialize command state on first call
         if self.current_command_state is None:
-            distance = params.get('Distance', 0.0)
+            distance = params.get('Distance', 0.0)  # Distance in tiles
             orientation = self.entity.orientation
             
-            # Movement speed per frame (lower values for smooth movement)
+            # Direction vectors for isometric movement
             direction_map = {
-                'NE': (0, -1),  # Move in tile coordinates 
-                'SE': (1, 0), 
-                'SW': (0, 1),
-                'NW': (-1, 0),
+                'NE': (0, -1),  # Move north-east in tile coordinates
+                'SE': (1, 0),   # Move south-east
+                'SW': (0, 1),   # Move south-west
+                'NW': (-1, 0),  # Move north-west
             }
             
             dx, dy = direction_map.get(orientation, (0.0, 0.0))
             
-            # Calculate target position
-            target_x = self.entity.get_world_pos().x + (dx * 16 * distance * self.entity.speed)
-            target_y = self.entity.get_world_pos().y + (dy * 16 * distance * self.entity.speed)
+            # Calculate target position in tiles
+            current_pos = self.entity.get_world_pos()
+            target_x = current_pos.x + (dx * distance)
+            target_y = current_pos.y + (dy * distance)
+            
+            # Movement speed in tiles per frame
+            speed_per_frame = self.entity.speed / 16.0  # Convert entity speed to tiles per frame
             
             self.current_command_state = {
                 'target_x': target_x,
                 'target_y': target_y,
                 'dx': dx,
                 'dy': dy,
-                'speed': self.entity.speed
+                'speed': speed_per_frame
             }
             
-            print(f"  [START] MoveRelative: distance={distance} tiles, target=({target_x:.1f}, {target_y:.1f})")
+            print(f"  [START] MoveRelative: distance={distance:.3f} tiles, "
+                  f"target=({target_x:.3f}, {target_y:.3f}), speed={speed_per_frame:.3f} tiles/frame")
         
         # Continue moving toward target
         state = self.current_command_state
         current_pos = self.entity.get_world_pos()
         
-        # Calculate distance to target
+        # Calculate distance to target (in tiles)
         dist_x = state['target_x'] - current_pos.x
         dist_y = state['target_y'] - current_pos.y
         distance_remaining = (dist_x**2 + dist_y**2)**0.5
@@ -124,37 +131,43 @@ class ScriptCommands:
                 state['target_x'],
                 state['target_y'],
                 current_pos.z,
-                0, 0, 0, 0  # These will be updated by game loop
+                0, 0, 0, 0, 0  # These will be updated by game loop
             )
-            print(f"  [COMPLETE] MoveRelative: reached target")
+            print(f"  [COMPLETE] MoveRelative: reached target ({state['target_x']:.3f}, {state['target_y']:.3f})")
             self.current_command_state = None
             return True  # Command complete
         
-        # Move one step toward target
+        # Move one step toward target (in tiles)
         move_x = state['dx'] * state['speed']
         move_y = state['dy'] * state['speed']
         
-        self.entity.add_world_x(move_x)
-        self.entity.add_world_y(move_y)
+        new_x = current_pos.x + move_x
+        new_y = current_pos.y + move_y
+        
+        self.entity.set_world_pos(
+            new_x,
+            new_y,
+            current_pos.z,
+            0, 0, 0, 0, 0
+        )
         
         return False  # Command still in progress
     
     def cmd_move_absolute(self, params: Dict[str, Any]) -> bool:
-        """Move entity to absolute position
+        """Move entity to absolute position in tiles
         
         Args:
-            params: Dictionary containing 'X', 'Y', 'Z' coordinates
+            params: Dictionary containing 'X', 'Y', 'Z' coordinates (in tiles)
             
         Returns:
             True (instant command)
         """
-        x = params.get('X', 0.0)
-        y = params.get('Y', 0.0)
-        z = params.get('Z', 0.0)
-        print(f"  [EXEC] MoveAbsolute: x={x}, y={y}, z={z}")
+        x = params.get('X', 0.0)  # In tiles
+        y = params.get('Y', 0.0)  # In tiles
+        z = params.get('Z', 0.0)  # In tiles
+        print(f"  [EXEC] MoveAbsolute: x={x:.3f}, y={y:.3f}, z={z:.3f} tiles")
         
-        current_pos = self.entity.get_world_pos()
-        self.entity.set_world_pos(x, y, z, 0, 0, 0, 0)
+        self.entity.set_world_pos(x, y, z, 0, 0, 0, 0, 0)
         return True
     
     def cmd_jump(self, params: Dict[str, Any]) -> bool:
@@ -166,8 +179,8 @@ class ScriptCommands:
         Returns:
             True (instant command for now)
         """
-        height = params.get('Height', 1.0)
-        print(f"  [STUB] Jump: height={height}")
+        height = params.get('Height', 1.0)  # Height in tiles
+        print(f"  [STUB] Jump: height={height:.3f} tiles")
         # TODO: Implement jump with physics
         return True
     
@@ -210,6 +223,7 @@ class ScriptCommands:
         return True
     
     def TurnSENoUpdate(self, params: Dict[str, Any] = None) -> bool:
+        """Turn entity to SE without updating position"""
         self.entity.orientation = 'SE'
         return True
 
@@ -263,14 +277,14 @@ class ScriptCommands:
     # === Speed Commands ===
     
     def cmd_fast_speed(self, params: Optional[Dict[str, Any]] = None) -> bool:
-        """Double the movement speed for subsequent movement commands
+        """Increase the movement speed for subsequent movement commands
         
         Returns:
             True (instant command)
         """
-        if self.entity.speed < 3:   # TODO hero cannot keep up when entity speed is more than 3
-            self.entity.speed += 1 
-        print(f"  [EXEC] FastSpeed: entity speed set to {self.entity.speed}")
+        if self.entity.speed < 48:   # Max speed (3 tiles per frame at 16 pixels/tile)
+            self.entity.speed += 16  # Increase by 1 tile per frame worth
+        print(f"  [EXEC] FastSpeed: entity speed set to {self.entity.speed} ({self.entity.speed/16:.1f} tiles/frame)")
         return True
     
     # === Action Commands ===
@@ -311,6 +325,7 @@ class ScriptCommands:
             True (instant command)
         """
         self.entity.visible = params.get('Visible', True)
+        print(f"  [EXEC] SetVisible: visible={self.entity.visible}")
         return True
     
     def cmd_set_solid(self, params: Dict[str, Any]) -> bool:
@@ -322,15 +337,18 @@ class ScriptCommands:
         Returns:
             True (instant command)
         """
-        self.entity.visible = params.get('Solid', True)
+        self.entity.solid = params.get('Solid', True)
+        print(f"  [EXEC] SetSolid: solid={self.entity.solid}")
         return True
 
     def cmd_enable_gravity(self, params: Dict[str, Any] = None) -> bool:
         """Set entity gravity state
+        
         Returns:
             True (instant command)
         """
         self.entity.gravity = True
+        print(f"  [EXEC] EnableGravity: gravity enabled")
         return True
     
     # === Dialog/Interaction Commands ===
@@ -547,8 +565,6 @@ def run_entity_script(entity, behaviour_id: int, one_shot: bool = True) -> None:
         if not script_commands:
             print(f"Warning: No 'Script' key found in {filepath}")
             return
-        
-        #print(f"Loading Behaviour {behaviour_id}: {data.get('Name', 'Unknown')}")
         
         # Create command handler if entity doesn't have one
         if not hasattr(entity, 'script_handler'):
