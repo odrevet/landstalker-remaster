@@ -657,9 +657,7 @@ class Game:
         if is_hero:
             entity_standing_on = get_entity_hero_is_standing_on(
                 drawable,
-                entities_to_check,
-                tile_h
-            )
+                entities_to_check)
             if entity_standing_on is not None:
                 self.on_entity_collids(entity_standing_on)
         
@@ -669,8 +667,7 @@ class Game:
             drawable_y,
             drawable_w,
             drawable_h,
-            height_at_bottom,
-            tile_h
+            height_at_bottom
         )
         
         max_surface_height = max_ground_height
@@ -947,7 +944,7 @@ class Game:
                 moved = True
         
         if moved:
-            entity = check_collids_entity(self.hero, new_x, new_y, self.room.entities, tile_h)
+            entity = check_collids_entity(self.hero, new_x, new_y, self.room.entities)
             if entity is not None:
                 print(f"Hero at {self.hero.get_world_pos()} collids with {entity.name} at {entity.get_world_pos()}")
 
@@ -1387,7 +1384,7 @@ class Game:
         
 
         for entity in self.room.entities:
-            if check_entity_collision_3d(self.hero.bbox, entity.bbox, tile_h):
+            if check_entity_collision_3d(self.hero.bbox, entity.bbox):
                 print(f"Collids with entity {entity.name}")
                 self.hero.set_world_z(8)
                 
@@ -1410,8 +1407,7 @@ class Game:
         
         entity_standing_on = get_entity_hero_is_standing_on(
             self.hero,
-            entities_to_check,
-            tile_h
+            entities_to_check
         )
         
         if entity_standing_on is not None:
