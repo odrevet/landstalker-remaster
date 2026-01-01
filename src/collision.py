@@ -201,7 +201,7 @@ def get_entity_hero_is_standing_on(hero: Hero, entities: List[Entity]) -> Option
             if highest_top is None or entity_top > highest_top:
                 highest_top = entity_top
                 highest_entity = entity
-                print(f"    Hero is standing on this entity!")
+                print(f"Hero is standing on {entity.name}")
     
     return highest_entity
 

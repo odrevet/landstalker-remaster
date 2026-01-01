@@ -673,7 +673,7 @@ class Game:
         max_surface_height = max_ground_height
         if entity_top is not None:
             # entity_top is in pixels, convert to tiles
-            max_surface_height = max(max_ground_height, entity_top / tile_h)
+            max_surface_height = max(max_ground_height, entity_top)
         
         tilemap_height = self.get_tilemap_height()
         
