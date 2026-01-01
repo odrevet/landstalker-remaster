@@ -1002,11 +1002,11 @@ class Game:
             hero_pos = self.hero.get_world_pos()
             
             # Get position in front of hero
-            place_x, place_y = get_position_in_front_of_hero(self.hero, tile_h)
+            place_x, place_y = get_position_in_front_of_hero(self.hero)
             
             # Get tile coordinates for terrain height check
-            place_tile_x = int(place_x // tile_h)
-            place_tile_y = int(place_y // tile_h)
+            place_tile_x = int(place_x)
+            place_tile_y = int(place_y)
 
             if (place_tile_x >= 0 and place_tile_y >= 0 and
                 place_tile_x < self.room.heightmap.get_width() and
@@ -1014,7 +1014,7 @@ class Game:
                 
                 cell = self.room.heightmap.get_cell(place_tile_x, place_tile_y)
                 if cell:
-                    place_z = cell.height * tile_h
+                    place_z = cell.height
                     
                     if can_place_entity_at_position(
                         hero_pos.z,
@@ -1023,8 +1023,7 @@ class Game:
                         place_y,
                         place_z,
                         self.room.entities,
-                        self.room.heightmap,
-                        tile_h
+                        self.room.heightmap
                     ):
                         # Place the entity at exact pixel position
                         self.hero.grabbed_entity.set_world_pos(
