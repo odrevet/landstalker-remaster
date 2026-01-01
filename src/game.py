@@ -1054,8 +1054,7 @@ class Game:
             # Check for entity in front of hero
             entity = get_entity_in_front_of_hero(
                 self.hero,
-                self.room.entities,
-                tile_h
+                self.room.entities
             )
 
             if entity is not None: 

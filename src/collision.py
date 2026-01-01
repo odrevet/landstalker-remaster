@@ -252,8 +252,8 @@ def get_entity_in_front_of_hero(hero: Hero, entities: List[Entity]) -> Optional[
             continue
         
         # Calculate entity bounds in tiles
-        entity_x = entity.bbox.world_pos.x + MARGIN
-        entity_y = entity.bbox.world_pos.y + MARGIN
+        entity_x = entity.bbox.world_pos.x + MARGIN - 12
+        entity_y = entity.bbox.world_pos.y + MARGIN - 12
         entity_w = entity.bbox.size_in_tiles - (MARGIN * 2)
         entity_h = entity.bbox.size_in_tiles - (MARGIN * 2)
         
