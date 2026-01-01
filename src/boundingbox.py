@@ -3,7 +3,7 @@ from pygame.math import Vector3
 from utils import cartesian_to_iso
 
 # Margin to reduce bounding box size for tighter collision detection
-MARGIN: int = 2
+MARGIN: float = 0.2
 
 
 class BoundingBox:
@@ -34,8 +34,8 @@ class BoundingBox:
         x = self.world_pos.x + MARGIN
         y = self.world_pos.y + MARGIN
         # Use size_in_tiles to determine the actual bounding box dimensions
-        width = (tile_h * self.size_in_tiles) - (MARGIN * 2)
-        height = (tile_h * self.size_in_tiles) - (MARGIN * 2)
+        width = (self.size_in_tiles) - (MARGIN * 2)
+        height = (self.size_in_tiles) - (MARGIN * 2)
         
         return (x, y, width, height)
     

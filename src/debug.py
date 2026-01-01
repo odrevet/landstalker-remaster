@@ -3,6 +3,190 @@ from typing import List, Tuple, Optional
 from utils import cartesian_to_iso
 from boundingbox import BoundingBox
 
+import pygame
+from typing import Tuple, Optional
+from pygame.math import Vector2
+
+
+import pygame
+from typing import Tuple, Optional
+from utils import cartesian_to_iso
+
+
+def draw_heightmap_cell(surface: pygame.Surface, x: int, y: int, z: int,
+                        tile_width: int, tile_height: int,
+                        cell_props: int, cell_type: int,
+                        draw_outline: bool = False,
+                        wall_colour: Tuple[int, int, int] = (255, 255, 255),
+                        opacity: int = 128) -> None:
+    """
+    Draw a single heightmap cell as a diamond shape.
+    
+    Args:
+        surface: pygame Surface to draw on
+        x: X pixel position (center of diamond)
+        y: Y pixel position (center of diamond)
+        z: Height value (affects vertical offset)
+        tile_width: Width of a tile (typically 8)
+        tile_height: Height of a tile (typically 8)
+        cell_props: Cell properties (walkability, etc.)
+        cell_type: Cell type value
+        draw_outline: Whether to draw colored outline
+        wall_colour: RGB color for the outline
+        opacity: Alpha opacity (0-255)
+    """
+    # Calculate the diamond points
+    # A diamond is drawn as 4 triangular faces in isometric view
+    half_w = tile_width
+    half_h = tile_height
+    
+    # Diamond vertices (top, right, bottom, left)
+    points = [
+        (x, y - half_h),           # Top
+        (x + half_w, y),           # Right
+        (x, y + half_h),           # Bottom
+        (x - half_w, y)            # Left
+    ]
+    
+    # Determine fill color based on cell properties
+    # Cell props: 0x04 = completely restricted (don't draw)
+    # Lower values = more walkable
+    if cell_props == 0x00:
+        # Fully walkable - light green
+        fill_color = (100, 255, 100)
+    elif cell_props == 0x01:
+        # Partially walkable - yellow
+        fill_color = (255, 255, 100)
+    elif cell_props == 0x02:
+        # Less walkable - orange
+        fill_color = (255, 165, 100)
+    elif cell_props == 0x03:
+        # Nearly blocked - red
+        fill_color = (255, 100, 100)
+    else:
+        # Blocked or unknown - dark gray
+        fill_color = (100, 100, 100)
+    
+    # Create a temporary surface with alpha for blending
+    temp_surface = pygame.Surface((half_w * 2, half_h * 2), pygame.SRCALPHA)
+    temp_x = x - (x - half_w)
+    temp_y = y - (y - half_h)
+    
+    # Draw the diamond with the fill color
+    temp_points = [
+        (temp_x, temp_y - half_h),
+        (temp_x + half_w, temp_y),
+        (temp_x, temp_y + half_h),
+        (temp_x - half_w, temp_y)
+    ]
+    pygame.draw.polygon(temp_surface, (*fill_color, opacity), temp_points)
+    
+    # Draw outline
+    if draw_outline:
+        pygame.draw.polygon(temp_surface, (*wall_colour, 255), temp_points, 2)
+    else:
+        # Draw subtle white outline for all cells
+        pygame.draw.polygon(temp_surface, (255, 255, 255, 128), temp_points, 1)
+    
+    # Draw height indicator - vertical line from center going up
+    if z > 0:
+        height_offset = z * tile_height
+        pygame.draw.line(temp_surface, (255, 255, 255, 200),
+                        (temp_x, temp_y),
+                        (temp_x, temp_y - height_offset), 2)
+        # Draw a small circle at the top to indicate height
+        pygame.draw.circle(temp_surface, (255, 200, 0, 255),
+                          (temp_x, temp_y - height_offset), 3)
+    
+    # Blit to main surface
+    surface.blit(temp_surface, (x - half_w, y - half_h))
+
+
+def draw_heightmap_visualization(surface: pygame.Surface,
+                                 heightmap,  # Heightmap object
+                                 room,       # Room object
+                                 camera_x: float,
+                                 camera_y: float,
+                                 opacity: int = 128) -> None:
+    """
+    Draw the entire heightmap visualization over the tilemap.
+    
+    Args:
+        surface: pygame Surface to draw on
+        heightmap: Heightmap object with cells
+        room: Room object with map dimensions
+        camera_x: Camera X offset
+        camera_y: Camera Y offset
+        opacity: Alpha opacity for the heightmap (0-255)
+    """
+    if not heightmap.cells or not room.data:
+        return
+    
+    tile_width = 8
+    tile_height = 8
+    
+    # Iterate through all heightmap cells
+    for y in range(heightmap.get_height()):
+        for x in range(heightmap.get_width()):
+            cell = heightmap.get_cell(x, y)
+            if cell is None:
+                continue
+            
+            # Only draw cells that are not completely restricted
+            # or have height > 0
+            if cell.height > 0 or cell.walkable != 0x04:
+                # Convert heightmap position to isometric pixel coordinates
+                # Using the same formula as in C++: Iso3DToPixel
+                # Note: C++ adds 12 to x,y to center the heightmap
+                iso_x = x + 12
+                iso_y = y + 12
+                z = cell.height
+                
+                # Apply the Iso3D to Pixel conversion
+                # From C++:
+                # int xx = iso.x - GetLeft();
+                # int yy = iso.y - GetTop();
+                # int ix = (xx - yy + (GetHeight() - 1)) * 2 + GetLeft();
+                # int iy = (xx + yy - iso.z * 2) + GetTop();
+                # return Point2D{ ix * tile_width, iy * tile_height };
+                
+                left = heightmap.left_offset
+                top = heightmap.top_offset
+                map_height = room.data.height
+                
+                xx = iso_x - left
+                yy = iso_y - top
+                ix = (xx - yy + (map_height - 1)) * 2 + left
+                iy = (xx + yy - z * 2) + top
+                
+                pixel_x = ix * tile_width
+                pixel_y = iy * tile_height
+                
+                # Adjust for camera
+                screen_x = pixel_x - camera_x
+                screen_y = pixel_y - camera_y
+                
+                # Determine if we should draw an outline
+                # (For doors, swaps, etc. - simplified here)
+                draw_outline = False
+                wall_colour = (255, 255, 255)
+                
+                # Draw the cell
+                draw_heightmap_cell(
+                    surface,
+                    int(screen_x),
+                    int(screen_y),
+                    z,
+                    tile_width,
+                    tile_height,
+                    cell.walkable,
+                    0,  # cell_type (not used yet)
+                    draw_outline,
+                    wall_colour,
+                    opacity
+                )
+
+
 def draw_heightmap(screen: pygame.Surface, heightmap, tile_height: int, camera_x: float, camera_y: float) -> None:
     """Draw the isometric heightmap with semi-transparent fills and wireframe."""
 
