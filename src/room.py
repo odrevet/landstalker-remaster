@@ -143,7 +143,6 @@ class Room:
                                    display_width, display_height)
         
         # Prepare entities for drawing (update their screen positions)
-        tile_h = self.data.tileheight
         for entity in self.entities:
             entity._update_screen_pos(
                 self.heightmap.left_offset,
@@ -161,14 +160,14 @@ class Room:
             if entity.get_world_pos() is not None:
                 # Sort key: Y + (Z + height)
                 # The top of the object determines draw order in isometric view
-                entity_height = entity.HEIGHT * tile_h  # Entity height in world units
-                sort_key = entity.get_world_pos().y + entity.get_world_pos().z + entity_height
+                entity_height = entity.HEIGHT
+                sort_key = entity.get_world_pos().y - 12 + entity.get_world_pos().z + entity_height
                 drawable_objects.append((sort_key, entity))
         
         # Add hero with their sort key
         if hero.get_world_pos() is not None:
             # Hero is 2 tiles tall, so use their full height for sorting
-            hero_height = hero.height * tile_h  # Hero height in world units (2 tiles)
+            hero_height = hero.height
             sort_key = hero.get_world_pos().y + hero.get_world_pos().z + hero_height
             drawable_objects.append((sort_key, hero))
         
