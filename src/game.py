@@ -707,7 +707,6 @@ class Game:
                     self.room.heightmap.top_offset,
                     self.camera_x,
                     self.camera_y,
-                    tile_h,
                     tilemap_height
                 )
             
@@ -736,7 +735,6 @@ class Game:
                         self.room.heightmap.top_offset,
                         self.camera_x,
                         self.camera_y,
-                        tile_h,
                         tilemap_height
                     )
                 
@@ -828,7 +826,6 @@ class Game:
                         self.room.heightmap.top_offset,
                         self.camera_x,
                         self.camera_y,
-                        tile_h,
                         tilemap_height
                     )
                 
@@ -977,7 +974,6 @@ class Game:
                     self.room.heightmap.top_offset,
                     self.camera_x,
                     self.camera_y,
-                    tile_h,
                     tilemap_height
                 )
                 
@@ -1027,8 +1023,8 @@ class Game:
                     ):
                         # Place the entity at exact pixel position
                         self.hero.grabbed_entity.set_world_pos(
-                            place_x,
-                            place_y,
+                            place_x + 12,
+                            place_y + 12,
                             place_z,
                             self.room.heightmap.left_offset,
                             self.room.heightmap.top_offset,
@@ -1070,7 +1066,6 @@ class Game:
                         self.room.heightmap.top_offset,
                         self.camera_x,
                         self.camera_y,
-                        tile_h,
                         tilemap_height
                     )
                     

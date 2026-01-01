@@ -370,7 +370,7 @@ def update_carried_positions(hero, entities, tile_h, heightmap_left_offset,
             if hero.is_grabbing:
                 hero.update_grabbed_entity_position(
                     heightmap_left_offset, heightmap_top_offset,
-                    camera_x, camera_y, tile_h, tilemap_height
+                    camera_x, camera_y, tilemap_height
                 )
     
     # Check each entity standing on other entities

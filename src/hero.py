@@ -303,8 +303,7 @@ class Hero(Drawable):
         return self.is_grabbing and self.grabbed_entity is not None
     
     def update_grabbed_entity_position(self, left_offset: int, top_offset: int, 
-                                      camera_x: float, camera_y: float, 
-                                      tile_h: int, tilemap_height: int) -> None:
+                                      camera_x: float, camera_y: float, tilemap_height: int) -> None:
         """Update the position of the grabbed entity to be above the hero
         
         Args:
@@ -312,7 +311,6 @@ class Hero(Drawable):
             top_offset: Heightmap top offset
             camera_x: Camera X position
             camera_y: Camera Y position
-            tile_h: Tile height in pixels
             tilemap_height: Map height in tiles
         """
         if not self.has_grabbed_entity():
@@ -320,7 +318,7 @@ class Hero(Drawable):
         
         # Position entity directly above hero (HEIGHT tiles higher in Z)
         hero_pos = self.get_world_pos()
-        entity_z = hero_pos.z + (self.height * tile_h)
+        entity_z = hero_pos.z + self.height - 12
         
         # Update entity world and screen position
         self.grabbed_entity.set_world_pos(
