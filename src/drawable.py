@@ -142,11 +142,22 @@ class Drawable:
         y = self._world_pos.y * SCALE_FACTOR - 0x80   # -128
         z = self._world_pos.z * SCALE_FACTOR
 
+        # hitbox width/length
+        if self.bbox.size_in_tiles * 8 >= 0x0C:
+            print("ADD 0X80")
+            x += 0x80
+            y += 0x80
+
         xx = x - LEFT
         yy = y - TOP
 
+        print(f"input {x} {y} {z}")
+        print(f"LEFT {LEFT} TOP {TOP} HEIGHT {HEIGHT}")
+
         ix:int = (xx - yy + (HEIGHT - SCALE_FACTOR)) * 2 + LEFT
         iy:int = (xx + yy - z * 2) + TOP
+
+        print(f"({xx} + {yy} - {z} * 2) + {TOP}")
 
         tile_width = 8
         tile_height = 8
@@ -154,9 +165,23 @@ class Drawable:
         px:int = (ix * tile_width)  // SCALE_FACTOR
         py:int = (iy * tile_height) // SCALE_FACTOR
 
-        self._screen_pos.x = px - camera_x
-        self._screen_pos.y = py - camera_y - (self.height * tile_height) * 2
 
+        print('---')
+        print(f"ix={ix} iy={iy}")
+        print(f"px={px} py={py}")
+        print(f"{self.height} {tile_height}")
+
+        print(f"{self.bbox.size_in_tiles} {self.bbox.height_in_tiles}")
+        print(f"{self.bbox.size_in_tiles * 8} {self.bbox.height_in_tiles * 8}")
+
+
+        sx:int = px - self.bbox.size_in_tiles * 8
+        sy:int = py - self.bbox.height_in_tiles * 8
+
+        print(f"sx={sx} sy={sy}")
+
+        self._screen_pos.x = sx - camera_x
+        self._screen_pos.y = sy - camera_y
 
     def get_screen_pos(self) -> Vector2:
         """Get the object's screen position
