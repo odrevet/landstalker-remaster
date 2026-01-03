@@ -20,15 +20,58 @@ class Entity(Drawable):
     # Entity properties cache - loaded from EntityXXXProperties.yaml files
     _entity_properties_cache: ClassVar[Dict[int, Dict[str, Any]]] = {}
     
+    # Animation YAML cache - loaded from SpriteGfxXXXAnimXX.yaml files
+    _animation_yaml_cache: ClassVar[Dict[str, Dict[str, Any]]] = {}
+    
     # Default hitbox values if YAML properties are not available
     _default_hitbox: ClassVar[Tuple[float, float, float]] = (1.0, 1.0, 1.0)
     
     # Specific item frame mappings (entity_id -> (frame_index, animation_number))
     # Items always use 8 frames (indices 0-7) from the sprite sheet
     _item_frame_map: ClassVar[Dict[int, Tuple[int, str]]] = {
-        230: (6, "004"),  # Island Map - frame 6, animation 004
-        229: (5, "004"),  # Hotel Register - frame 5, animation 004
+        230: (6, "04"),  # Island Map - frame 6, animation 04
+        229: (5, "04"),  # Hotel Register - frame 5, animation 04
     }
+    
+    @classmethod
+    def _load_animation_yaml(cls, label: str, anim_num: str) -> Optional[Dict[str, Any]]:
+        """Load animation YAML file for frame and subsprite information
+        
+        Args:
+            label: The sprite label (e.g., "SpriteGfx000")
+            anim_num: The animation number (e.g., "00")
+            
+        Returns:
+            Dictionary containing complete animation data including frames and subsprites, or None if not found
+        """
+        yaml_key = f"{label}Anim{anim_num}"
+        
+        # Check cache first
+        if yaml_key in cls._animation_yaml_cache:
+            return cls._animation_yaml_cache[yaml_key]
+        
+        # Construct YAML filename
+        yaml_file = f"data/sprites/{yaml_key}.yaml"
+        
+        if not os.path.exists(yaml_file):
+            print(f"Warning: Animation YAML file not found: {yaml_file}")
+            cls._animation_yaml_cache[yaml_key] = None
+            return None
+        
+        try:
+            with open(yaml_file, 'r') as f:
+                anim_data = yaml.safe_load(f)
+                cls._animation_yaml_cache[yaml_key] = anim_data
+                print(f"Loaded animation YAML: {yaml_file}")
+                if anim_data:
+                    print(f"  Animation data keys: {anim_data.keys()}")
+                    if 'frames' in anim_data:
+                        print(f"  Number of frames: {len(anim_data['frames'])}")
+                return anim_data
+        except Exception as e:
+            print(f"Error loading animation YAML from {yaml_file}: {e}")
+            cls._animation_yaml_cache[yaml_key] = None
+            return None
     
     @classmethod
     def _load_entity_properties(cls, entity_id: int) -> Optional[Dict[str, Any]]:
@@ -96,14 +139,14 @@ class Entity(Drawable):
             cls._sprite_properties_cache[sprite_id] = None
             return None
     
-    def _get_sprite_info(self, sprite_id: int) -> Optional[Tuple[str, int, int]]:
-        """Get sprite file path, frame width, and frame count from sprite properties
+    def _get_sprite_info(self, sprite_id: int) -> Optional[Tuple[str, int, int, str]]:
+        """Get sprite file path, frame width, frame count, and label from sprite properties
         
         Args:
             sprite_id: The sprite ID to get info for
             
         Returns:
-            Tuple of (sprite_file_path, frame_width, frame_count) or None if not found
+            Tuple of (sprite_file_path, frame_width, frame_count, label) or None if not found
         """
         sprite_props = self._load_sprite_properties(sprite_id)
         if sprite_props is None:
@@ -123,14 +166,15 @@ class Entity(Drawable):
             print(f"  _get_sprite_info: Entity is a mapped item, using animation {anim_num}")
         else:
             # Determine animation number based on orientation
-            # NW and NE use Anim000, SE and SW use Anim001
-            anim_num = "000"
+            # NW and NE use Anim00, SE and SW use Anim01
+            anim_num = "00"
             if self.orientation in ["SE", "SW"]:
-                anim_num = "001"
+                anim_num = "01"
             print(f"  _get_sprite_info: Using animation {anim_num} for orientation {self.orientation}")
         
         # Construct sprite file path: data/sprites/SpriteGfxXXXAnimXXX.png
-        sprite_file = f"data/sprites/{label}Anim{anim_num}.png"
+        # Note: PNG files use 3-digit animation numbers, YAML files use 2-digit
+        sprite_file = f"data/sprites/{label}Anim{anim_num.zfill(3)}.png"
         
         # Get hitbox to determine frame width
         hitbox = sprite_props.get('Hitbox', {})
@@ -273,6 +317,11 @@ class Entity(Drawable):
         self.sprite_missing: bool = False  # Flag to indicate missing sprite
         self.fixed_frame_index: Optional[int] = None  # For items that use a specific frame
         
+        # Complete animation YAML data for screen position calculations
+        self.animation_yaml: Optional[Dict[str, Any]] = None  # Full animation YAML data
+        self.animation_label: Optional[str] = None  # Sprite label (e.g., "SpriteGfx000")
+        self.animation_num: Optional[str] = None  # Animation number (e.g., "00")
+        
         # Animation timing (Entity-specific speed)
         self.animation_speed = 0.1  # Seconds per frame
         
@@ -320,6 +369,23 @@ class Entity(Drawable):
         self.frame_width = frame_width
         self.frame_count = frame_count
         print(f"  Sprite info: file={sprite_file}, frame_width={frame_width}, frame_count={frame_count}")
+        
+        # Store animation label and number for later use
+        self.animation_label = label
+        
+        # Determine animation number for loading the animation YAML
+        if self.entity_id in self._item_frame_map:
+            _, anim_num = self._item_frame_map[self.entity_id]
+            self.animation_num = anim_num
+        else:
+            self.animation_num = "00" if self.orientation in ["NW", "NE"] else "01"
+        
+        # Load complete animation YAML to get frame and subsprite data
+        self.animation_yaml = self._load_animation_yaml(label, self.animation_num)
+        if self.animation_yaml:
+            print(f"  Loaded animation YAML for {label}Anim{self.animation_num}")
+            if 'frames' in self.animation_yaml:
+                print(f"  Animation has {len(self.animation_yaml['frames'])} frame entries")
         
         # Check if already in cache
         if sprite_file not in Entity._sprite_cache:
@@ -390,7 +456,7 @@ class Entity(Drawable):
             display_image = self.image
             if self.no_rotate == False and self.orientation in ("SE", "NW"):
                 display_image = pygame.transform.flip(self.image, True, False)
-            
+
             surface.blit(display_image, self._screen_pos)
 
     def is_crate(self) -> bool:

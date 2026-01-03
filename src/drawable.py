@@ -42,8 +42,6 @@ class Drawable:
         self.animation_speed: float = 0.15  # Default animation speed
         self.animation_timer: float = 0.0
     
-
-
     def get_position_delta(self) -> tuple:
         """Get the change in position since last frame"""
         dx = self._world_pos.x - self.prev_world_pos.x
@@ -78,6 +76,7 @@ class Drawable:
             heightmap_top_offset: Heightmap top offset
             camera_x: Camera X position
             camera_y: Camera Y position
+            tilemap_height: Map height
         """
         self._world_pos.x = x
         self._world_pos.y = y
@@ -115,6 +114,7 @@ class Drawable:
             heightmap_top_offset: Heightmap top offset
             camera_x: Camera X position
             camera_y: Camera Y position
+            tilemap_height: Map height
         """
         self._update_screen_pos(heightmap_left_offset, heightmap_top_offset, camera_x, camera_y, tilemap_height)
     
@@ -131,6 +131,7 @@ class Drawable:
             camera_y: Camera Y position
             tilemap_height: Map height (GetHeight())
         """    
+        #print('---')
         SCALE_FACTOR = 256  # 0x100
 
         # Scale offsets
@@ -144,20 +145,20 @@ class Drawable:
 
         # hitbox width/length
         if self.bbox.size_in_tiles * 8 >= 0x0C:
-            print("ADD 0X80")
+            #print("ADD 0X80")
             x += 0x80
             y += 0x80
 
         xx = x - LEFT
         yy = y - TOP
 
-        print(f"input {x} {y} {z}")
-        print(f"LEFT {LEFT} TOP {TOP} HEIGHT {HEIGHT}")
+        #print(f"input {x} {y} {z}")
+        #print(f"LEFT {LEFT} TOP {TOP} HEIGHT {HEIGHT}")
 
         ix:int = (xx - yy + (HEIGHT - SCALE_FACTOR)) * 2 + LEFT
         iy:int = (xx + yy - z * 2) + TOP
 
-        print(f"({xx} + {yy} - {z} * 2) + {TOP}")
+        #print(f"({xx} + {yy} - {z} * 2) + {TOP}")
 
         tile_width = 8
         tile_height = 8
@@ -165,20 +166,44 @@ class Drawable:
         px:int = (ix * tile_width)  // SCALE_FACTOR
         py:int = (iy * tile_height) // SCALE_FACTOR
 
+        #print(f"ix={ix} iy={iy}")
+        #print(f"px={px} py={py}")
 
-        print('---')
-        print(f"ix={ix} iy={iy}")
-        print(f"px={px} py={py}")
-        print(f"{self.height} {tile_height}")
+        # Get subsprite offsets if available (from Entity class animation YAML)
+        subsprite_x = 0
+        subsprite_y = 0
+        
+        if hasattr(self, 'animation_yaml') and self.animation_yaml:
+            # Get current frame index
+            frame_idx = 0
+            if hasattr(self, 'fixed_frame_index') and self.fixed_frame_index is not None:
+                frame_idx = self.fixed_frame_index
+            elif hasattr(self, 'current_frame'):
+                frame_idx = self.current_frame
+            
+            # Navigate to frames array in animation YAML
+            frames = self.animation_yaml.get('frames', [])
+            
+            # Check if we have a valid frame entry
+            if frame_idx < len(frames):
+                frame_data = frames[frame_idx]
+                
+                # Check if frame_data has subsprites
+                if isinstance(frame_data, dict) and 'subsprites' in frame_data:
+                    subsprites = frame_data['subsprites']
+                    
+                    # Use first subsprite's x and y offsets
+                    if isinstance(subsprites, list) and len(subsprites) > 0:
+                        first_subsprite = subsprites[0]
+                        if isinstance(first_subsprite, list) and len(first_subsprite) >= 2:
+                            subsprite_x = first_subsprite[0]
+                            subsprite_y = first_subsprite[1]
+                            #print(f"Using subsprite offsets for frame {frame_idx}: [{subsprite_x}, {subsprite_y}]")
 
-        print(f"{self.bbox.size_in_tiles} {self.bbox.height_in_tiles}")
-        print(f"{self.bbox.size_in_tiles * 8} {self.bbox.height_in_tiles * 8}")
+        sx:int = px + subsprite_x
+        sy:int = py + subsprite_y
 
-
-        sx:int = px - self.bbox.size_in_tiles * 8
-        sy:int = py - self.bbox.height_in_tiles * 8
-
-        print(f"sx={sx} sy={sy}")
+        #print(f"sx={sx} sy={sy}")
 
         self._screen_pos.x = sx - camera_x
         self._screen_pos.y = sy - camera_y
