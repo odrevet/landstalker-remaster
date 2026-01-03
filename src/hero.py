@@ -221,6 +221,10 @@ class Hero(Drawable):
         )
         self._screen_pos.y += 12 * 16
 
+        # todo read from sprite 0 anim subframe
+        self._screen_pos.x -= 16 
+        self._screen_pos.y -= 40 
+
 
     def _update_frame_index(self, is_moving: bool) -> None:
         """Update the current frame index based on animation state
