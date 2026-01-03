@@ -42,7 +42,6 @@ class Hero(Drawable):
         self.is_jumping: bool = False
         self.current_jump: int = 0
         self.is_moving: bool = False
-        self.orientation: str = "DOWN"  # UP, DOWN, LEFT, RIGHT
         
         # Z-axis movement tracking
         self.previous_z: float = z
@@ -99,31 +98,6 @@ class Hero(Drawable):
             
         except (pygame.error, FileNotFoundError) as e:
             print(f"Warning: Could not load hero animation sprites: {e}")
-            self._create_placeholder_animations()
-    
-    def _create_placeholder_animations(self) -> None:
-        """Create placeholder animations when sprite files are missing"""
-        placeholder = pygame.Surface((32, 48), pygame.SRCALPHA)
-        placeholder.fill((255, 0, 255, 128))  # Magenta placeholder
-        
-        # Single frame animations
-        for anim_name in ["idle_front", "idle_back", "idle_left", "idle_right",
-                          "carry_idle_front", "carry_idle_back", "carry_idle_left", "carry_idle_right"]:
-            self.animations[anim_name] = [placeholder.copy()]
-        
-        # Multi-frame walk animations
-        for anim_name in ["walk_front", "walk_back", "walk_left", "walk_right",
-                          "carry_walk_front", "carry_walk_back", "carry_walk_left", "carry_walk_right"]:
-            self.animations[anim_name] = [placeholder.copy() for _ in range(8)]
-        
-        # Jump animations
-        for anim_name in ["jump_front", "jump_back", "jump_left", "jump_right",
-                          "carry_jump_front", "carry_jump_back", "carry_jump_left", "carry_jump_right"]:
-            self.animations[anim_name] = [placeholder.copy() for _ in range(2)]
-        
-        # Pickup animations
-        for anim_name in ["pickup_front", "pickup_back"]:
-            self.animations[anim_name] = [placeholder.copy() for _ in range(3)]
     
     def update_z_velocity(self) -> None:
         """Calculate Z-axis velocity based on position change"""
@@ -242,18 +216,7 @@ class Hero(Drawable):
             # Walk/idle animations advance automatically
             should_advance = is_moving or len(self.animations[self.current_animation]) == 1
             self.update_animation_frame(advance=should_advance)
-    
-    def update_orientation(self, dx: float, dy: float) -> None:
-        """Update hero's facing direction based on movement delta
         
-        Args:
-            dx: Change in X position
-            dy: Change in Y position
-        """
-        # No update if there's no movement
-        if dx == 0 and dy == 0:
-            return
-    
     def grab_entity(self, entity: 'Entity') -> None:
         """Start grabbing an entity
         
