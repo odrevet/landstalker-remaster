@@ -535,8 +535,6 @@ class Game:
                             return False
 
                         dest_tile_x, dest_tile_y = warp.get_destination(self.room_number, self.room.heightmap)
-                        dest_cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(dest_tile_x, dest_tile_y)
-                        dest_tile_z: int = dest_cell.height if dest_cell else 0
 
                         self.room_number = target_room
                         current_bgm = self.room.room_properties["RoomBGM"]
@@ -551,7 +549,12 @@ class Game:
                             dest_tile_x -= 1
                             dest_tile_y += 1
 
-                        # Set position in tile coordinates (center of tile)
+                        # Set position
+                        dest_cell: Optional[HeightmapCell] = self.room.heightmap.get_cell(dest_tile_x, dest_tile_y)
+                        dest_tile_z: int = dest_cell.height if dest_cell else 0
+
+                        print(f"DEST TILE Z IS {dest_tile_z}")
+
                         self.hero.set_world_pos(
                             dest_tile_x,
                             dest_tile_y,
@@ -683,6 +686,9 @@ class Game:
         if max_surface_height < height_at_bottom:
             # Falling
             new_z = drawable_pos.z - gravity_tiles
+
+
+            print(f"NEW Z {new_z} = { drawable_pos.z} - {gravity_tiles}")
             
             if new_z <= max_surface_height:
                 new_z = max_surface_height
@@ -1379,7 +1385,6 @@ class Game:
         for entity in self.room.entities:
             if check_entity_collision_3d(self.hero.bbox, entity.bbox):
                 print(f"Collids with entity {entity.name}")
-                self.hero.set_world_z(8)
                 
     def check_initial_entity_collision(self) -> None:
         """Check for entity collisions immediately after spawn/warp

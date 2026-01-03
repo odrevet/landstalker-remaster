@@ -245,21 +245,21 @@ class Room:
 
                 screen_x, screen_y = self.iso_to_pixel(x, y, is_background, map_height, tile_width, tile_height, True)
 
-                print(
-                    "[populate_layer]\n"
-                    f"  Map XY        : ({x}, {y})\n"
-                    f"  Layer         : {layer_name}\n"
-                    f"  Background    : {is_background}\n"
-                    f"  Offset        : True\n"
-                    f"  GID           : 0x{gid:X}\n"
-                    f"  Tile Size     : ({tile_w}, {tile_h})\n"
-                    f"  SubTile Size  : ({tile_width}, {tile_height})\n"
-                    f"  Map Height    : {map_height}\n"
-                    f"  Left Offset   : {self.heightmap.left_offset}\n"
-                    f"  Top Offset    : {self.heightmap.top_offset}\n"
-                    f"  Pixel XY      : ({screen_x}, {screen_y})\n"
-                    "----------------------------------------"
-                )
+                #print(
+                #    "[populate_layer]\n"
+                #    f"  Map XY        : ({x}, {y})\n"
+                #    f"  Layer         : {layer_name}\n"
+                #    f"  Background    : {is_background}\n"
+                #    f"  Offset        : True\n"
+                #    f"  GID           : 0x{gid:X}\n"
+                #    f"  Tile Size     : ({tile_w}, {tile_h})\n"
+                #    f"  SubTile Size  : ({tile_width}, {tile_height})\n"
+                #    f"  Map Height    : {map_height}\n"
+                #    f"  Left Offset   : {self.heightmap.left_offset}\n"
+                #    f"  Top Offset    : {self.heightmap.top_offset}\n"
+                #    f"  Pixel XY      : ({screen_x}, {screen_y})\n"
+                #    "----------------------------------------"
+                #)
 
                 # Instantiate a new blockset
                 blockset: Blockset = Blockset()

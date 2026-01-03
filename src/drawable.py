@@ -19,8 +19,6 @@ class Drawable:
         """
         self._world_pos: Vector3 = Vector3(x, y, z)
         self.prev_world_pos = self._world_pos.copy()
-
-        print(f"SET WORLD POS TO {self._world_pos}")
         self._screen_pos: Vector2 = Vector2()
         
         # Cache for update_screen_pos parameters
