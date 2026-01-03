@@ -309,9 +309,8 @@ class Entity(Drawable):
         # Visual properties
         self.palette: int = data.get('Palette', 0)
         self.orientation: str = data.get('Orientation', 'NE')
-        
+
         # Sprite/animation (using base class animation support)
-        self.sprite_sheet: Optional[pygame.Surface] = None  # Full sprite sheet
         self.frame_width: int = 32  # Width of each frame (will be set by sprite properties)
         self.frame_count: int = 1  # Number of frames (will be set by sprite properties)
         self.sprite_missing: bool = False  # Flag to indicate missing sprite
@@ -445,20 +444,6 @@ class Entity(Drawable):
         if self.fixed_frame_index is None and len(self.frames) > 1:
             self.update_animation_frame(advance=True)
     
-    def draw(self, surface: pygame.Surface) -> None:
-        """Draw the entity on the surface
-        
-        Args:
-            surface: Pygame surface to draw on
-        """
-        # Only draw sprite if it exists and is visible
-        if self.image and self.visible:
-            display_image = self.image
-            if self.no_rotate == False and self.orientation in ("SE", "NW"):
-                display_image = pygame.transform.flip(self.image, True, False)
-
-            surface.blit(display_image, self._screen_pos)
-
     def is_crate(self) -> bool:
         """Check if entity is a crate"""
         return self.entity_class == 'Crate'

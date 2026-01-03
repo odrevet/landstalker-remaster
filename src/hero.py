@@ -42,7 +42,7 @@ class Hero(Drawable):
         self.is_jumping: bool = False
         self.current_jump: int = 0
         self.is_moving: bool = False
-        self.facing_direction: str = "DOWN"  # UP, DOWN, LEFT, RIGHT
+        self.orientation: str = "DOWN"  # UP, DOWN, LEFT, RIGHT
         
         # Z-axis movement tracking
         self.previous_z: float = z
@@ -169,9 +169,6 @@ class Hero(Drawable):
         
         # Update the frame index
         self._update_frame_index(is_moving)
-        
-        # Apply horizontal mirroring if needed
-        self._apply_direction_mirroring()
     
     def _get_animation_name(self) -> str:
         """Determine which animation to play based on current state
@@ -195,13 +192,13 @@ class Hero(Drawable):
         
         # Determine direction suffix
         direction_map = {
-            "UP": "back",
-            "DOWN": "front",
-            "LEFT": "left",
-            "RIGHT": "front",  # Uses front animation, flipped during rendering
+            "NE": "back",
+            "SE": "front",
+            "NW": "back",
+            "SW": "front",
         }
         
-        direction = direction_map.get(self.facing_direction, "front")
+        direction = direction_map.get(self.orientation, "front")
         return f"{prefix}{state}_{direction}"
 
     def _update_screen_pos(
@@ -245,25 +242,8 @@ class Hero(Drawable):
             # Walk/idle animations advance automatically
             should_advance = is_moving or len(self.animations[self.current_animation]) == 1
             self.update_animation_frame(advance=should_advance)
-
-    def _apply_direction_mirroring(self) -> None:
-        """Apply horizontal mirroring to the image based on facing direction"""
-        if not self.current_animation or self.current_animation not in self.animations:
-            return
-        
-        frames = self.animations[self.current_animation]
-        if not frames or self.current_frame >= len(frames):
-            return
-        
-        base_image = frames[self.current_frame]
-        
-        # Mirror horizontally for left and right directions
-        if self.facing_direction in ("LEFT", "RIGHT"):
-            self.image = pygame.transform.flip(base_image, True, False)
-        else:
-            self.image = base_image
     
-    def update_facing_direction(self, dx: float, dy: float) -> None:
+    def update_orientation(self, dx: float, dy: float) -> None:
         """Update hero's facing direction based on movement delta
         
         Args:
@@ -273,12 +253,6 @@ class Hero(Drawable):
         # No update if there's no movement
         if dx == 0 and dy == 0:
             return
-        
-        # Prioritize the axis with larger absolute movement
-        if abs(dx) > abs(dy):
-            self.facing_direction = "LEFT" if dx < 0 else "RIGHT"
-        else:
-            self.facing_direction = "UP" if dy < 0 else "DOWN"
     
     def grab_entity(self, entity: 'Entity') -> None:
         """Start grabbing an entity
@@ -345,7 +319,7 @@ class Hero(Drawable):
         return (
             f"Hero("
             f"pos={self._world_pos}, "
-            f"facing={self.facing_direction}, "
+            f"facing={self.orientation}, "
             f"animation={self.current_animation}, "
             f"frame={self.current_frame}, "
             f"airborne={self.is_airborne()}, "

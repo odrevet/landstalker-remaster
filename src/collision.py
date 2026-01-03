@@ -216,18 +216,18 @@ def get_position_in_front_of_hero(hero: Hero) -> Tuple[float, float]:
     print("get_position_in_front_of_hero")
     
     hero_pos = hero.get_world_pos()  # In tiles
-    print(f"  Hero pos: ({hero_pos.x:.3f}, {hero_pos.y:.3f}), facing: {hero.facing_direction}")
+    print(f"  Hero pos: ({hero_pos.x:.3f}, {hero_pos.y:.3f}), facing: {hero.orientation}")
     
     front_x = hero_pos.x  # In tiles
     front_y = hero_pos.y
     
-    if hero.facing_direction == "UP":
+    if hero.orientation == "UP":
         front_y -= 1.0  # 1 tile
-    elif hero.facing_direction == "DOWN":
+    elif hero.orientation == "DOWN":
         front_y += 1.0
-    elif hero.facing_direction == "LEFT":
+    elif hero.orientation == "LEFT":
         front_x -= 1.0
-    elif hero.facing_direction == "RIGHT":
+    elif hero.orientation == "RIGHT":
         front_x += 1.0
     
     print(f"  Position in front: ({front_x:.3f}, {front_y:.3f})")

@@ -21,6 +21,12 @@ class Drawable:
         self.prev_world_pos = self._world_pos.copy()
         self._screen_pos: Vector2 = Vector2()
         
+        self.orientation: str = 'NE'
+        self.no_rotate: bool = False
+        self.visible: bool = True
+
+        self.sprite_sheet: Optional[pygame.Surface] = None  # Full sprite sheet
+
         # Cache for update_screen_pos parameters
         self._heightmap_left_offset: int = 0
         self._heightmap_top_offset: int = 0
@@ -319,5 +325,8 @@ class Drawable:
         Args:
             surface: Pygame surface to draw on
         """
-        if self.image:
-            surface.blit(self.image, self._screen_pos)
+        if self.visible:
+            display_image = self.image 
+            if self.no_rotate == False and self.orientation in ("SE", "NW"):
+                display_image = pygame.transform.flip(self.image, True, False)
+            surface.blit(display_image, self._screen_pos)

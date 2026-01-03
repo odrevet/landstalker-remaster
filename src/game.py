@@ -854,13 +854,13 @@ class Game:
         
         # Update facing direction based on key presses (even if blocked)
         if keys[pygame.K_LEFT]:
-            self.hero.facing_direction = "LEFT"
+            self.hero.orientation = "NW"
         elif keys[pygame.K_RIGHT]:
-            self.hero.facing_direction = "RIGHT"
+            self.hero.orientation = "SE"
         elif keys[pygame.K_UP]:
-            self.hero.facing_direction = "UP"
+            self.hero.orientation = "NE"
         elif keys[pygame.K_DOWN]:
-            self.hero.facing_direction = "DOWN"
+            self.hero.orientation = "SW"
         
         # Re-lock camera when hero moves
         if is_moving:
