@@ -156,7 +156,7 @@ def get_entity_top_at_position(entities: List[Entity], check_x: float, check_y: 
         if entity_top_tiles <= hero_z + 0.0625:  # 1 pixel tolerance = 1/16 tiles
             if highest_top is None or entity_top_tiles > highest_top:
                 highest_top = entity_top_tiles
-                print(f"    New highest top: {highest_top:.3f}")
+                #print(f"    New highest top: {highest_top:.3f}")
     
     return highest_top
 
@@ -197,11 +197,10 @@ def get_entity_hero_is_standing_on(hero: Hero, entities: List[Entity]) -> Option
         entity_top = entity.bbox.world_pos.z + entity.bbox.height_in_tiles
         
         # Check if hero is standing on this entity (both in tiles)
-        if abs(hero_pos.z - entity_top) <= 0.0625:  # 1 pixel tolerance = 1/16 tiles
+        if abs(hero_pos.z - entity_top) == 0:  
             if highest_top is None or entity_top > highest_top:
                 highest_top = entity_top
                 highest_entity = entity
-                print(f"Hero is standing on {entity.name}")
     
     return highest_entity
 
@@ -344,11 +343,12 @@ def can_place_entity_at_position(hero_z: float, entity: Entity, x: float, y: flo
     return True
 
 
-def update_carried_positions(hero, entities, tile_h, heightmap_left_offset,
+def update_carried_positions(hero, entities, heightmap_left_offset,
                             heightmap_top_offset, camera_x, camera_y, tilemap_height):
     """Move hero/entities that are standing on moving entities"""
     # Check if hero is standing on an entity
     standing_on = get_entity_hero_is_standing_on(hero, entities)
+
     if standing_on:
         dx, dy, dz = standing_on.get_position_delta()  # Deltas in tiles
         

@@ -175,7 +175,7 @@ class Game:
         self.hero: Hero = Hero(args.x, args.y, args.z)
         
         # Validate and fix hero spawn position
-        self.fix_hero_spawn_position()
+        #self.fix_hero_spawn_position()
         
         self.check_initial_entity_collision()
 
@@ -683,12 +683,9 @@ class Game:
         # Gravity in tiles per frame
         gravity_tiles = GRAVITY / tile_h
         
+        # Check falling
         if max_surface_height < height_at_bottom:
-            # Falling
             new_z = drawable_pos.z - gravity_tiles
-
-
-            print(f"NEW Z {new_z} = { drawable_pos.z} - {gravity_tiles}")
             
             if new_z <= max_surface_height:
                 new_z = max_surface_height
@@ -1521,7 +1518,6 @@ class Game:
                 update_carried_positions(
                     self.hero,
                     self.room.entities,
-                    16,
                     self.room.heightmap.left_offset,
                     self.room.heightmap.top_offset,
                     self.camera_x,

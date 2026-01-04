@@ -88,7 +88,7 @@ class ScriptCommands:
             
             # Direction vectors for isometric movement
             direction_map = {
-                'NE': (0, -1),  # Move north-east in tile coordinates
+                'NE': (0, -1),  # Move north-east
                 'SE': (1, 0),   # Move south-east
                 'SW': (0, 1),   # Move south-west
                 'NW': (-1, 0),  # Move north-west
@@ -550,32 +550,33 @@ def run_entity_script(entity, behaviour_id: int, one_shot: bool = True) -> None:
         behaviour_id: Behavior ID to load
         one_shot: If True, script can only be triggered once (default: True)
     """
-    filepath = f"data/scripts/behaviour{behaviour_id}.yaml"
-    
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            data = yaml.safe_load(f)
+    if not hasattr(entity, 'script_handler') or not entity.script_handler.is_running:
+        filepath = f"data/scripts/behaviour{behaviour_id}.yaml"
         
-        if not data:
-            print(f"Warning: Empty script file at {filepath}")
-            return
-        
-        script_commands = data.get('Script', [])
-        
-        if not script_commands:
-            print(f"Warning: No 'Script' key found in {filepath}")
-            return
-        
-        # Create command handler if entity doesn't have one
-        if not hasattr(entity, 'script_handler'):
-            entity.script_handler = ScriptCommands(entity)
-        
-        # Start the script with one-shot flag
-        entity.script_handler.start_script(script_commands, one_shot=one_shot)
-        
-    except FileNotFoundError:
-        print(f"Warning: entity script file not found at {filepath}")
-    except Exception as e:
-        print(f"Error loading script: {e}")
-        import traceback
-        traceback.print_exc()
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+            
+            if not data:
+                print(f"Warning: Empty script file at {filepath}")
+                return
+            
+            script_commands = data.get('Script', [])
+            
+            if not script_commands:
+                print(f"Warning: No 'Script' key found in {filepath}")
+                return
+            
+            # Create command handler if entity doesn't have one
+            if not hasattr(entity, 'script_handler'):
+                entity.script_handler = ScriptCommands(entity)
+            
+            # Start the script with one-shot flag
+            entity.script_handler.start_script(script_commands, one_shot=one_shot)
+            
+        except FileNotFoundError:
+            print(f"Warning: entity script file not found at {filepath}")
+        except Exception as e:
+            print(f"Error loading script: {e}")
+            import traceback
+            traceback.print_exc()
