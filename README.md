@@ -72,6 +72,12 @@ python src/main.py -r 157 -x 25 -y 18 -z 0 --debug
 python src/main.py -r 598 -x 19 -y 27 -z 8 --debug
 ```
 
+* On raft
+
+```
+python src/main.py -r 168 -x 7 -y 9 -z 0.5 --debug
+```
+
 # Keys
 
 * Arrowkeys: move hero.
