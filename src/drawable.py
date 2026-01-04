@@ -21,7 +21,7 @@ class Drawable:
         self.prev_world_pos = self._world_pos.copy()
         self._screen_pos: Vector2 = Vector2()
         
-        self.orientation: str = 'NE'
+        self.orientation: str = 'SW'
         self.no_rotate: bool = False
         self.visible: bool = True
 
