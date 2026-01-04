@@ -607,6 +607,7 @@ class Game:
                     self.play_room_bgm()
                 self.camera_locked = True
                 self.center_camera_on_hero()
+                self.start_entity_scripts()
 
             self.start_fade(do_fall_warp)
             self.hero._world_pos.z =  self.room.data.properties['RoomZEnd']
