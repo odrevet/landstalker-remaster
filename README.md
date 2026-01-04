@@ -78,6 +78,12 @@ python src/main.py -r 598 -x 19 -y 27 -z 8 --debug
 python src/main.py -r 168 -x 7 -y 9 -z 0.5 --debug
 ```
 
+* Test boulder move
+
+```
+python src/main.py -r 5 -x 17 -y 19 -z 0
+```
+
 # Keys
 
 * Arrowkeys: move hero.
