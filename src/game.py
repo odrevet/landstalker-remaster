@@ -889,9 +889,6 @@ class Game:
             new_left_x: int = int((corners[0][0] - movement_speed))
             new_left_y: int = int(corners[0][1])
             
-            # fixme !
-            print(f"Checking cells: top=({new_top_x}, {new_top_y}), left=({new_left_x}, {new_left_y})")
-            
             if next_x > 0 and self.can_move_to(next_x, hero_pos.y, [
                 (new_top_x, new_top_y), (new_left_x, new_left_y)
             ]):

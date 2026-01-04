@@ -73,21 +73,28 @@ class ScriptCommands:
         }
     
     # === Movement Commands ===
-    
+        
     def cmd_move_relative(self, params: Dict[str, Any]) -> bool:
         """Move entity relative to current position (smoothly over time)
         
         All coordinates are in tiles. Movement speed is in tiles per frame.
+        The actual distance traveled = Distance parameter × entity.speed
         
         Args:
-            params: Dictionary containing 'Distance' parameter (in tiles)
+            params: Dictionary containing 'Distance' parameter (scale factor)
             
         Returns:
             True if command is complete, False if still in progress
         """
         # Initialize command state on first call
         if self.current_command_state is None:
-            distance = params.get('Distance', 0.0)  # Distance in tiles
+            distance_scale = params.get('Distance', 0.0)  # Scale factor
+            
+            # Actual distance in tiles = distance × 2^(speed-1)
+            # Examples: speed=1,dist=8 → 8×1=8; speed=2,dist=6 → 6×2=12; speed=3,dist=4 → 4×4=16
+            speed_multiplier = 2 ** (self.entity.speed - 1)
+            actual_distance = distance_scale * speed_multiplier
+            
             orientation = self.entity.orientation
             
             # Direction vectors for isometric movement
@@ -100,13 +107,15 @@ class ScriptCommands:
             
             dx, dy = direction_map.get(orientation, (0.0, 0.0))
             
+            print(f"{orientation} {dx} {dy}")
+
             # Calculate target position in tiles
             current_pos = self.entity.get_world_pos()
-            target_x = current_pos.x + (dx * distance)
-            target_y = current_pos.y + (dy * distance)
+            target_x = current_pos.x + (dx * actual_distance)
+            target_y = current_pos.y + (dy * actual_distance)
             
             # Movement speed in tiles per frame
-            speed_per_frame = self.entity.speed / 16  # Convert entity speed to block per frame
+            speed_per_frame = self.entity.speed / 16  # Convert entity speed to tiles per frame
             
             self.current_command_state = {
                 'target_x': target_x,
@@ -116,13 +125,17 @@ class ScriptCommands:
                 'speed': speed_per_frame
             }
             
-            print(f"  [START] MoveRelative: distance={distance:.3f} tiles, "
-                  f"target=({target_x:.3f}, {target_y:.3f}), speed={speed_per_frame:.3f} tiles/frame")
-        
+            print(f"  [START] MoveRelative: distance_scale={distance_scale:.3f}, "
+                f"entity_speed={self.entity.speed}, actual_distance={actual_distance:.3f} tiles, "
+                f"from=({current_pos.x} {current_pos.y}) target=({target_x:.3f}, {target_y:.3f}), "
+                f"speed={speed_per_frame:.3f} tiles/frame")
+
         # Continue moving toward target
         state = self.current_command_state
         current_pos = self.entity.get_world_pos()
-        
+
+        print(f"from=({current_pos.x} {current_pos.y}) target=({state['target_x']:.3f}, {state['target_y']:.3f})")
+
         # Calculate distance to target (in tiles)
         dist_x = state['target_x'] - current_pos.x
         dist_y = state['target_y'] - current_pos.y
