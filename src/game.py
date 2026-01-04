@@ -1381,10 +1381,11 @@ class Game:
         hero_bbox = self.hero.get_bounding_box(tile_h)
         hero_x, hero_y, hero_w, hero_h = hero_bbox
         
-
         for entity in self.room.entities:
             if check_entity_collision_3d(self.hero.bbox, entity.bbox):
                 print(f"Collids with entity {entity.name}")
+                self.hero.set_world_z(entity.get_world_pos().z + entity.height)
+
                 
     def check_initial_entity_collision(self) -> None:
         """Check for entity collisions immediately after spawn/warp
