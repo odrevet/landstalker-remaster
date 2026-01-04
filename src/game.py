@@ -18,7 +18,6 @@ from debug import draw_heightmap, draw_warps, draw_boundbox, draw_heightmap_visu
 from collision import (resolve_entity_collision, get_entity_top_at_position, check_collids_entity, get_entity_hero_is_standing_on, 
                       get_entity_in_front_of_hero, can_place_entity_at_position, get_position_in_front_of_hero, get_touching_entities,
                       update_carried_positions, check_entity_collision_3d)
-from script_commands import run_entity_script
 from menu_screen import MenuScreen
 
 # Constants
@@ -252,7 +251,8 @@ class Game:
         print(f"Playing BGM: {bgm_path}")
 
     def on_entity_collids(self, entity):
-        run_entity_script(entity, entity.behaviour)
+        if not hasattr(entity, 'script_handler') or not entity.script_handler.is_running:
+            self.run_entity_script(entity, entity.behaviour, one_shot=True)
 
     def fix_hero_spawn_position(self) -> None:
         """Fix hero position if spawned in invalid location"""
@@ -1414,6 +1414,48 @@ class Game:
         if entity_standing_on is not None:
             print(f"Hero spawned standing on {entity_standing_on.name}")
             self.on_entity_collids(entity_standing_on)
+
+    def run_entity_script(self, entity, behaviour_id: int, one_shot: bool = True) -> None:
+        """Load and start entity script execution from YAML file
+        
+        Args:
+            entity: The entity executing the script
+            behaviour_id: Behavior ID to load
+            one_shot: If True, script can only be triggered once (default: True)
+        """
+        filepath = f"data/scripts/behaviour{behaviour_id}.yaml"
+        
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+            
+            if not data:
+                print(f"Warning: Empty script file at {filepath}")
+                return
+            
+            script_commands = data.get('Script', [])
+            
+            if not script_commands:
+                print(f"Warning: No 'Script' key found in {filepath}")
+                return
+            
+            # Create command handler if entity doesn't have one
+            if not hasattr(entity, 'script_handler'):
+                from script_commands import ScriptCommands
+                entity.script_handler = ScriptCommands(entity)
+            
+            # Store reference to game instance
+            entity.script_handler.game = self
+            
+            # Start the script with one-shot flag
+            entity.script_handler.start_script(script_commands, one_shot=one_shot)
+            
+        except FileNotFoundError:
+            print(f"Warning: entity script file not found at {filepath}")
+        except Exception as e:
+            print(f"Error loading script: {e}")
+            import traceback
+            traceback.print_exc()
 
     def run(self) -> None:
         """Main game loop"""
