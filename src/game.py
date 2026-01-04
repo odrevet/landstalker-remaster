@@ -1385,6 +1385,11 @@ class Game:
             if check_entity_collision_3d(self.hero.bbox, entity.bbox):
                 print(f"Collids with entity {entity.name}")
                 self.hero.set_world_z(entity.get_world_pos().z + entity.height)
+                self.hero._update_screen_pos(self.room.heightmap.left_offset, 
+                                             self.room.heightmap.top_offset, 
+                                             self.camera_x, 
+                                             self.camera_y, 
+                                             self.room.background_layer.data.height)
 
                 
     def check_initial_entity_collision(self) -> None:
