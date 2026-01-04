@@ -27,8 +27,9 @@ class ScriptCommands:
         self.script_commands = []
         self.paused = False
         self.pause_ticks_remaining = 0
-        self.one_shot = False
-        self.has_been_triggered = False  # Track if one-shot script has run
+        self.should_loop = True  # Default: scripts loop
+        self.waiting_for_condition = False  # Flag for WaitForCondition state
+        self.wait_condition_type = None  # Store which condition we're waiting for
         
         # Command dispatcher - maps command names to handler methods
         self.command_handlers = {
@@ -40,6 +41,7 @@ class ScriptCommands:
             # Rotation commands
             'TurnCW': self.cmd_turn_cw,
             'TurnCCW': self.cmd_turn_ccw,
+            'Turn180': self.cmd_turn_180,
             'TurnToFace': self.cmd_turn_to_face,
             'TurnSENoUpdate': self.TurnSENoUpdate,
             
@@ -65,6 +67,7 @@ class ScriptCommands:
             # Conditional commands
             'IfHasItem': self.cmd_if_has_item,
             'IfFlagSet': self.cmd_if_flag_set,
+            'WaitForCondition': self.cmd_wait_for_condition,
             
             # Flow control
             'Goto': self.cmd_goto,
@@ -73,7 +76,6 @@ class ScriptCommands:
         }
     
     # === Movement Commands ===
-        
     def cmd_move_relative(self, params: Dict[str, Any]) -> bool:
         """Move entity relative to current position (smoothly over time)
         
@@ -249,6 +251,24 @@ class ScriptCommands:
         self.entity.orientation = rotation.get(current, current)
         return True
     
+    def cmd_turn_180(self, params: Optional[Dict[str, Any]] = None) -> bool:
+        """Turn entity 180 degrees (opposite direction)
+        
+        Returns:
+            True (instant command)
+        """
+        rotation = {
+            "NE": "SW",
+            "SE": "NW",
+            "SW": "NE",
+            "NW": "SE",
+        }
+
+        print(f"  [EXEC] Turn180: {self.entity.orientation} -> {rotation.get(self.entity.orientation)}")
+        current = self.entity.orientation
+        self.entity.orientation = rotation.get(current, current)
+        return True
+
     def TurnSENoUpdate(self, params: Dict[str, Any] = None) -> bool:
         """Turn entity to SE without updating position"""
         self.entity.orientation = 'SE'
@@ -451,6 +471,47 @@ class ScriptCommands:
         print(f"  [STUB] IfFlagSet: flag_id={flag_id}")
         return True
     
+    def cmd_wait_for_condition(self, params: Dict[str, Any]) -> bool:
+        """Wait for a specific condition to be met before continuing
+        
+        Condition types:
+        1 - Wait for hero to stand on this entity
+        
+        Args:
+            params: Dictionary containing 'Condition' parameter
+            
+        Returns:
+            False until condition is met, then True
+        """
+        condition = params.get('Condition', 0)
+        
+        # First time this command is executed
+        if self.current_command_state is None:
+            self.waiting_for_condition = True
+            self.wait_condition_type = condition
+            self.should_loop = False  # Disable looping when waiting for condition
+            self.current_command_state = {'condition': condition}
+            print(f"  [START] WaitForCondition: condition={condition} (script paused)")
+            return False  # Don't advance to next command
+        
+        # Check if condition is met (this will be called from game.py)
+        # For now, just return False to keep waiting
+        return False
+    
+    def trigger_condition(self, condition_type: int) -> None:
+        """External trigger for conditions (called from game.py)
+        
+        Args:
+            condition_type: The condition type that was triggered
+        """
+        if self.waiting_for_condition and self.wait_condition_type == condition_type:
+            print(f"  [COMPLETE] WaitForCondition: condition={condition_type} met")
+            self.waiting_for_condition = False
+            self.wait_condition_type = None
+            self.current_command_state = None  # Clear command state
+            # Move to next command
+            self.current_command_index += 1
+    
     # === Flow Control Commands ===
     
     def cmd_goto(self, params: Dict[str, Any]) -> bool:
@@ -489,42 +550,44 @@ class ScriptCommands:
     
     # === Script Execution ===
     
-    def start_script(self, script_commands: list, one_shot: bool = False) -> None:
+    def start_script(self, script_commands: list, should_loop: bool = True) -> None:
         """Start executing a script
         
         Args:
             script_commands: List of commands to execute
-            one_shot: If True, script can only be triggered once
+            should_loop: If True, script will loop when it reaches the end (default: True)
         """
         # Don't restart if already running
         if self.is_running:
-            return
-        
-        # Don't restart if one-shot and already triggered
-        if one_shot and self.has_been_triggered:
             return
         
         self.script_commands = script_commands
         self.current_command_index = 0
         self.current_command_state = None
         self.is_running = True
-        self.one_shot = one_shot
-        print(f"\n=== Starting Script with {len(script_commands)} commands ===")
+        self.should_loop = should_loop
+        self.waiting_for_condition = False
+        self.wait_condition_type = None
+        print(f"\n=== Starting Script with {len(script_commands)} commands (loop={should_loop}) ===")
     
     def update(self) -> None:
         """Update script execution (call this every frame)"""
         if not self.is_running or not self.script_commands:
             return
         
+        # Don't advance if waiting for condition
+        if self.waiting_for_condition:
+            return
+        
         # Check if we've finished all commands
         if self.current_command_index >= len(self.script_commands):
-            print(f"=== Script Complete ===\n")
-            self.is_running = False
-            
-            # Mark as triggered if one-shot
-            if self.one_shot:
-                self.has_been_triggered = True
-            
+            if self.should_loop:
+                print(f"=== Script Loop: Restarting ===\n")
+                self.current_command_index = 0
+                self.current_command_state = None
+            else:
+                print(f"=== Script Complete ===\n")
+                self.is_running = False
             return
         
         # Get current command

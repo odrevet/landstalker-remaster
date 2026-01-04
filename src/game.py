@@ -170,6 +170,8 @@ class Game:
         self.room.load(self.room_number)
         self.play_room_bgm()
 
+        self.start_entity_scripts()
+
         # Create hero
         self.hero: Hero = Hero(args.x, args.y, args.z)
         
@@ -251,8 +253,11 @@ class Game:
         print(f"Playing BGM: {bgm_path}")
 
     def on_entity_collids(self, entity):
-        if not hasattr(entity, 'script_handler') or not entity.script_handler.is_running:
-            self.run_entity_script(entity, entity.behaviour, one_shot=True)
+        """Called when hero stands on an entity - triggers WaitForCondition"""
+        if hasattr(entity, 'script_handler'):
+            # If script is waiting for condition 1 (hero standing on entity), trigger it
+            if entity.script_handler.waiting_for_condition and entity.script_handler.wait_condition_type == 1:
+                entity.script_handler.trigger_condition(1)
 
     def fix_hero_spawn_position(self) -> None:
         """Fix hero position if spawned in invalid location"""
@@ -542,6 +547,8 @@ class Game:
                         self.hero.release_entity()
                         if current_bgm != self.room.room_properties["RoomBGM"]:
                             self.play_room_bgm()
+
+                        self.start_entity_scripts()
 
                         # PATCH: Adjust destination in raft sequence
                         if self.room_number == 168 or self.room_number == 169:
@@ -1412,13 +1419,14 @@ class Game:
             print(f"Hero spawned standing on {entity_standing_on.name}")
             self.on_entity_collids(entity_standing_on)
 
-    def run_entity_script(self, entity, behaviour_id: int, one_shot: bool = True) -> None:
+    def run_entity_script(self, entity, behaviour_id: int) -> None:
         """Load and start entity script execution from YAML file
+        
+        Scripts loop by default unless they contain WaitForCondition.
         
         Args:
             entity: The entity executing the script
             behaviour_id: Behavior ID to load
-            one_shot: If True, script can only be triggered once (default: True)
         """
         filepath = f"data/scripts/behaviour{behaviour_id}.yaml"
         
@@ -1444,8 +1452,8 @@ class Game:
             # Store reference to game instance
             entity.script_handler.game = self
             
-            # Start the script with one-shot flag
-            entity.script_handler.start_script(script_commands, one_shot=one_shot)
+            # Start the script (will loop by default)
+            entity.script_handler.start_script(script_commands, should_loop=True)
             
         except FileNotFoundError:
             print(f"Warning: entity script file not found at {filepath}")
@@ -1453,6 +1461,12 @@ class Game:
             print(f"Error loading script: {e}")
             import traceback
             traceback.print_exc()
+
+    def start_entity_scripts(self) -> None:
+        """Auto-start scripts for all entities with behaviors"""
+        for entity in self.room.entities:
+            if hasattr(entity, 'behaviour') and entity.behaviour > 0:
+                self.run_entity_script(entity, entity.behaviour)
 
     def run(self) -> None:
         """Main game loop"""
