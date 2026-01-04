@@ -202,12 +202,9 @@ class Drawable:
                         if isinstance(first_subsprite, list) and len(first_subsprite) >= 2:
                             subsprite_x = first_subsprite[0]
                             subsprite_y = first_subsprite[1]
-                            #print(f"Using subsprite offsets for frame {frame_idx}: [{subsprite_x}, {subsprite_y}]")
 
         sx:int = px + subsprite_x
         sy:int = py + subsprite_y
-
-        #print(f"sx={sx} sy={sy}")
 
         self._screen_pos.x = sx - camera_x
         self._screen_pos.y = sy - camera_y

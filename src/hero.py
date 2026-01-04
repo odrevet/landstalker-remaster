@@ -24,6 +24,8 @@ class Hero(Drawable):
         """
         super().__init__(x, y, z)
         
+        self.name = "Ryle"
+
         # Physical properties
         self.height: int = 2   # Height in tiles
         
@@ -193,8 +195,8 @@ class Hero(Drawable):
         self._screen_pos.y += 12 * 16
 
         # todo read from sprite 0 anim subframe
-        self._screen_pos.x -= 16 
-        self._screen_pos.y -= 40 
+        self._screen_pos.x -= 16
+        self._screen_pos.y -= 30 # 40 
 
 
     def _update_frame_index(self, is_moving: bool) -> None:
