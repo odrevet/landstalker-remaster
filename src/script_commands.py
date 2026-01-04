@@ -102,7 +102,7 @@ class ScriptCommands:
             target_y = current_pos.y + (dy * distance)
             
             # Movement speed in tiles per frame
-            speed_per_frame = self.entity.speed / 16.0  # Convert entity speed to tiles per frame
+            speed_per_frame = self.entity.speed / 16  # Convert entity speed to block per frame
             
             self.current_command_state = {
                 'target_x': target_x,
@@ -282,8 +282,8 @@ class ScriptCommands:
         Returns:
             True (instant command)
         """
-        if self.entity.speed < 48:   # Max speed (3 tiles per frame at 16 pixels/tile)
-            self.entity.speed += 16  # Increase by 1 tile per frame worth
+        if self.entity.speed < 3:   # Max speed
+            self.entity.speed += 1
         print(f"  [EXEC] FastSpeed: entity speed set to {self.entity.speed} ({self.entity.speed/16:.1f} tiles/frame)")
         return True
     
