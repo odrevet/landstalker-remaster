@@ -108,3 +108,36 @@ pyinstaller --onefile src/main.py \
     --add-data "data:data" \
     --add-data "ui.json:."
 ```
+
+# Util script
+
+List all behaviour command
+
+```
+awk '
+  /^[[:space:]]*-[[:space:]]*[A-Za-z0-9_]+:/ {
+    cmd=$2; sub(":", "", cmd)
+    getline
+    param=$0
+    gsub(/^[[:space:]]+/, "", param)
+
+    seen[cmd]=1
+    if (!(cmd in example)) example[cmd]=cmd "(" param ")"
+    next
+  }
+
+  /^[[:space:]]*-[[:space:]]*[A-Za-z0-9_]+$/ {
+    cmd=$2
+    seen[cmd]=1
+    next
+  }
+
+  END {
+    for (cmd in seen) {
+      print cmd
+      if (cmd in example)
+        print example[cmd]
+    }
+  }
+' data/scripts/*.yaml | sort
+```
