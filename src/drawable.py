@@ -20,7 +20,9 @@ class Drawable:
         self._world_pos: Vector3 = Vector3(x, y, z)
         self.prev_world_pos = self._world_pos.copy()
         self._screen_pos: Vector2 = Vector2()
-        
+        self.display_rotated = False
+
+        # props
         self.orientation: str = 'SW'
         self.no_rotate: bool = False
         self.visible: bool = True
@@ -45,7 +47,7 @@ class Drawable:
         self.current_frame: int = 0
         self.animation_speed: float = 0.15  # Default animation speed
         self.animation_timer: float = 0.0
-    
+        
     def get_position_delta(self) -> tuple:
         """Get the change in position since last frame"""
         dx = self._world_pos.x - self.prev_world_pos.x
@@ -324,6 +326,14 @@ class Drawable:
         """
         if self.visible:
             display_image = self.image 
-            if self.no_rotate == False and self.orientation in ("SE", "NW"):
+            if self.display_rotated:
                 display_image = pygame.transform.flip(self.image, True, False)
             surface.blit(display_image, self._screen_pos)
+
+    def update_display_rotated(self) -> None:
+        self.display_rotated = self.no_rotate == False and self.orientation in ("SE", "NW")
+
+    def set_orientation(self, orientation, update_display_rotate = True) -> None:
+        self.orientation = orientation
+        if update_display_rotate:
+            self.update_display_rotated()

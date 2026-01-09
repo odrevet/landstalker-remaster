@@ -308,6 +308,7 @@ class Entity(Drawable):
         
         # Visual properties
         self.palette: int = data.get('Palette', 0)
+
         self.orientation: str = data.get('Orientation', 'NE')
 
         # Sprite/animation (using base class animation support)
@@ -346,6 +347,9 @@ class Entity(Drawable):
         
         # Load sprite for this entity
         self._load_sprite()
+
+        self.display_rotated = self.orientation in ("SE", "NW")
+        print(f"INIT {self.name} {self.display_rotated}")
     
     def _load_sprite(self) -> None:
         """Load sprite for this entity using sprite ID from entity properties"""

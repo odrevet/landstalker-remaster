@@ -866,7 +866,7 @@ class Game:
             self.hero.orientation = "NE"
         elif keys[pygame.K_DOWN]:
             self.hero.orientation = "SW"
-        
+
         # Re-lock camera when hero moves
         if is_moving:
             self.camera_locked = True
@@ -1582,6 +1582,8 @@ class Game:
                 # Auto-center camera if not in debug mode
                 if not self.debug_mode:
                     self.center_camera_on_hero()
+
+                self.hero.display_rotated = self.hero.orientation in ("SE", "NW")
 
                 # Update entity scripts
                 for entity in self.room.entities:

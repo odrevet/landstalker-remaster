@@ -796,7 +796,7 @@ class ScriptCommands:
 
         print(f"  [EXEC] TurnCW: {self.entity.orientation} -> {rotation.get(self.entity.orientation)}")
         current = self.entity.orientation
-        self.entity.orientation = rotation.get(current, current)
+        self.entity.set_orientation(rotation.get(current, current))
         return True
     
     def cmd_turn_cw_immediate(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -821,7 +821,7 @@ class ScriptCommands:
         }
         print(f"  [EXEC] TurnCWNoUpdate: {self.entity.orientation} -> {rotation.get(self.entity.orientation)}")
         current = self.entity.orientation
-        self.entity.orientation = rotation.get(current, current)
+        self.entity.set_orientation(rotation.get(current, current))
         return True
     
     def cmd_turn_ccw(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -837,9 +837,11 @@ class ScriptCommands:
             "SE": "NE",
         }
 
-        print(f"  [EXEC] TurnCCW: {self.entity.orientation} -> {rotation.get(self.entity.orientation)}")
         current = self.entity.orientation
-        self.entity.orientation = rotation.get(current, current)
+        to = rotation.get(current)
+
+        print(f"  [EXEC] TurnCCW: {current} -> {to}")
+        self.entity.set_orientation(to)
         return True
     
     def cmd_turn_ccw_immediate(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -864,7 +866,7 @@ class ScriptCommands:
         }
         print(f"  [EXEC] TurnCCWNoUpdate: {self.entity.orientation} -> {rotation.get(self.entity.orientation)}")
         current = self.entity.orientation
-        self.entity.orientation = rotation.get(current, current)
+        self.entity.set_orientation(rotation.get(current, current))
         return True
     
     def cmd_turn_180(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -882,7 +884,8 @@ class ScriptCommands:
 
         print(f"  [EXEC] Turn180: {self.entity.orientation} -> {rotation.get(self.entity.orientation)}")
         current = self.entity.orientation
-        self.entity.orientation = rotation.get(current, current)
+        orientation = rotation.get(current, current)
+        self.entity.set_orientation(orientation)
         return True
     
     def cmd_turn_180_immediate(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -907,13 +910,13 @@ class ScriptCommands:
         }
         print(f"  [EXEC] Turn180NoUpdate: {self.entity.orientation} -> {rotation.get(self.entity.orientation)}")
         current = self.entity.orientation
-        self.entity.orientation = rotation.get(current, current)
+        self.entity.set_orientation(rotation.get(current, current))
         return True
     
     def cmd_turn_ne(self, params: Optional[Dict[str, Any]] = None) -> bool:
         """Turn entity to face NE"""
         print(f"  [EXEC] TurnNE: {self.entity.orientation} -> NE")
-        self.entity.orientation = 'NE'
+        self.entity.set_orientation('NE')
         return True
     
     def cmd_turn_ne_immediate(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -923,13 +926,13 @@ class ScriptCommands:
     def cmd_turn_ne_no_update(self, params: Optional[Dict[str, Any]] = None) -> bool:
         """Turn entity to face NE without updating sprite"""
         print(f"  [EXEC] TurnNENoUpdate: -> NE")
-        self.entity.orientation = 'NE'
+        self.entity.set_orientation('NE', False)
         return True
     
     def cmd_turn_nw(self, params: Optional[Dict[str, Any]] = None) -> bool:
         """Turn entity to face NW"""
         print(f"  [EXEC] TurnNW: {self.entity.orientation} -> NW")
-        self.entity.orientation = 'NW'
+        self.entity.set_orientation('NW')
         return True
     
     def cmd_turn_nw_immediate(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -939,13 +942,13 @@ class ScriptCommands:
     def cmd_turn_nw_no_update(self, params: Optional[Dict[str, Any]] = None) -> bool:
         """Turn entity to face NW without updating sprite"""
         print(f"  [EXEC] TurnNWNoUpdate: -> NW")
-        self.entity.orientation = 'NW'
+        self.entity.set_orientation('NW', False)
         return True
     
     def cmd_turn_se(self, params: Optional[Dict[str, Any]] = None) -> bool:
         """Turn entity to face SE"""
         print(f"  [EXEC] TurnSE: {self.entity.orientation} -> SE")
-        self.entity.orientation = 'SE'
+        self.entity.set_orientation('SE')
         return True
     
     def cmd_turn_se_immediate(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -955,13 +958,13 @@ class ScriptCommands:
     def cmd_turn_se_no_update(self, params: Optional[Dict[str, Any]] = None) -> bool:
         """Turn entity to face SE without updating sprite"""
         print(f"  [EXEC] TurnSENoUpdate: -> SE")
-        self.entity.orientation = 'SE'
+        self.entity.set_orientation('SE', False)
         return True
     
     def cmd_turn_sw(self, params: Optional[Dict[str, Any]] = None) -> bool:
         """Turn entity to face SW"""
         print(f"  [EXEC] TurnSW: {self.entity.orientation} -> SW")
-        self.entity.orientation = 'SW'
+        self.entity.set_orientation('SW')
         return True
     
     def cmd_turn_sw_immediate(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -971,7 +974,7 @@ class ScriptCommands:
     def cmd_turn_sw_no_update(self, params: Optional[Dict[str, Any]] = None) -> bool:
         """Turn entity to face SW without updating sprite"""
         print(f"  [EXEC] TurnSWNoUpdate: -> SW")
-        self.entity.orientation = 'SW'
+        self.entity.set_orientation('SW')
         return True
     
     def cmd_turn_random(self, params: Optional[Dict[str, Any]] = None) -> bool:
@@ -980,7 +983,7 @@ class ScriptCommands:
         directions = ['NE', 'SE', 'SW', 'NW']
         new_dir = random.choice(directions)
         print(f"  [EXEC] TurnRandom: {self.entity.orientation} -> {new_dir}")
-        self.entity.orientation = new_dir
+        self.entity.set_orientation(new_dir)
         return True
     
     def cmd_turn_random_immediate(self, params: Optional[Dict[str, Any]] = None) -> bool:
