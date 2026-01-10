@@ -1,3 +1,5 @@
+import os
+import glob
 from typing import Dict, Any, Optional, Tuple, List, ClassVar
 import pygame
 from pygame.math import Vector2, Vector3
@@ -5,7 +7,6 @@ from boundingbox import BoundingBox
 from utils import cartesian_to_iso
 from drawable import Drawable
 import yaml
-import os
 
 
 class Entity(Drawable):
@@ -138,6 +139,138 @@ class Entity(Drawable):
             print(f"Error loading sprite properties from {yaml_file}: {e}")
             cls._sprite_properties_cache[sprite_id] = None
             return None
+    
+    def _get_all_animation_files(self, label: str) -> List[Tuple[str, str]]:
+        """Find all animation files for a given sprite label
+        
+        Args:
+            label: The sprite label (e.g., "SpriteGfx015")
+            
+        Returns:
+            List of tuples (animation_number, file_path) for all found animations
+        """
+        # Pattern to match: data/sprites/SpriteGfxXXXAnimYYY.png
+        pattern = f"data/sprites/{label}Anim*.png"
+        files = glob.glob(pattern)
+        
+        animations = []
+        for file_path in files:
+            # Extract animation number from filename
+            # Format: SpriteGfxXXXAnimYYY.png
+            basename = os.path.basename(file_path)
+            # Remove extension and split
+            name_parts = basename.replace('.png', '')
+            # Extract the animation number (last 3 digits before .png)
+            anim_num = name_parts[-3:]
+            animations.append((anim_num, file_path))
+        
+        # Sort by animation number
+        animations.sort(key=lambda x: x[0])
+        return animations
+    
+    def _load_all_animations(self) -> None:
+        """Load all available animations for this entity's sprite
+        
+        This loads:
+        - Anim000 (walk_back) - guaranteed
+        - Anim001 (walk_front) - guaranteed  
+        - Any additional animations found
+        """
+        if not hasattr(self, 'animation_label') or not self.animation_label:
+            print(f"Warning: No animation label set for entity {self.name}")
+            return
+        
+        # Find all animation files for this sprite
+        animation_files = self._get_all_animation_files(self.animation_label)
+        
+        if not animation_files:
+            print(f"Warning: No animation files found for {self.animation_label}")
+            return
+        
+        print(f"Loading {len(animation_files)} animations for {self.name} ({self.animation_label})")
+        
+        # Get sprite properties to determine frame dimensions
+        sprite_props = self._load_sprite_properties(self.sprite_id)
+        if not sprite_props:
+            print(f"Warning: Could not load sprite properties for sprite ID {self.sprite_id}")
+            return
+        
+        # Calculate frame dimensions
+        hitbox = sprite_props.get('Hitbox', {})
+        width = hitbox.get('Width', 1.0)
+        frame_width_pixels = int(width * 32)
+        if frame_width_pixels <= 32:
+            frame_width = 32
+        elif frame_width_pixels <= 64:
+            frame_width = 64
+        elif frame_width_pixels <= 128:
+            frame_width = 128
+        else:
+            frame_width = 256
+        
+        # Get animation properties for frame counts
+        animation_props = sprite_props.get('Animation', {})
+        walk_frame_count = animation_props.get('WalkCycleFrameCount', 1)
+        idle_frame_count = animation_props.get('IdleAnimationFrameCount', 1)
+        
+        print(f"  Animation properties: walk_frames={walk_frame_count}, idle_frames={idle_frame_count}")
+        
+        # Load each animation
+        for anim_num, file_path in animation_files:
+            # Load animation YAML to get additional frame info
+            anim_yaml = self._load_animation_yaml(self.animation_label, anim_num[-2:])
+            
+            # Determine frame count based on animation type
+            if self.entity_id in self._item_frame_map:
+                # Items always have 8 frames
+                frame_count = 8
+            elif anim_num == "000":
+                # Anim000 is walk_back - use WalkCycleFrameCount
+                frame_count = walk_frame_count
+            elif anim_num == "001":
+                # Anim001 is walk_front - use WalkCycleFrameCount
+                frame_count = walk_frame_count
+            elif anim_yaml and 'frames' in anim_yaml:
+                # For other animations, use YAML frame count if available
+                frame_count = len(anim_yaml['frames'])
+            else:
+                # Fall back to walk frame count
+                frame_count = max(walk_frame_count, idle_frame_count, 1)
+            
+            # Determine animation name based on number
+            # Anim000 = walk_back, Anim001 = walk_front, others are numbered
+            if anim_num == "000":
+                anim_name = "walk_back"
+            elif anim_num == "001":
+                anim_name = "walk_front"
+            else:
+                anim_name = f"anim_{anim_num}"
+            
+            # Load the animation using the Drawable base class method
+            success = self.load_animation_from_file(
+                anim_name,
+                file_path,
+                frame_width,
+                self.sprite_sheet.get_height() if self.sprite_sheet else 48,
+                frame_count
+            )
+            
+            if success:
+                print(f"  Loaded {anim_name} ({frame_count} frames) from {file_path}")
+        
+        # Create idle animations from first frame of walk animations
+        if "walk_back" in self.animations and self.animations["walk_back"]:
+            self.animations["idle_back"] = [self.animations["walk_back"][0]]
+        if "walk_front" in self.animations and self.animations["walk_front"]:
+            self.animations["idle_front"] = [self.animations["walk_front"][0]]
+        
+        # Create left/right variants (will be flipped during rendering)
+        if "walk_back" in self.animations:
+            self.animations["walk_left"] = self.animations["walk_back"]
+            self.animations["walk_right"] = self.animations["walk_back"]
+        if "idle_back" in self.animations:
+            self.animations["idle_left"] = self.animations["idle_back"]
+            self.animations["idle_right"] = self.animations["idle_back"]
     
     def _get_sprite_info(self, sprite_id: int) -> Optional[Tuple[str, int, int, str]]:
         """Get sprite file path, frame width, frame count, and label from sprite properties
@@ -308,7 +441,6 @@ class Entity(Drawable):
         
         # Visual properties
         self.palette: int = data.get('Palette', 0)
-
         self.orientation: str = data.get('Orientation', 'NE')
 
         # Sprite/animation (using base class animation support)
@@ -324,6 +456,9 @@ class Entity(Drawable):
         
         # Animation timing (Entity-specific speed)
         self.animation_speed = 0.1  # Seconds per frame
+        
+        # Movement state tracking
+        self.is_moving: bool = False
         
         # Behavior properties
         self.behaviour: int = data.get('Behaviour', 0)
@@ -373,7 +508,7 @@ class Entity(Drawable):
         self.frame_count = frame_count
         print(f"  Sprite info: file={sprite_file}, frame_width={frame_width}, frame_count={frame_count}")
         
-        # Store animation label and number for later use
+        # Store animation label for loading all animations
         self.animation_label = label
         
         # Determine animation number for loading the animation YAML
@@ -412,31 +547,24 @@ class Entity(Drawable):
             self.sprite_missing = True
             return
         
-        print(f"  Extracting {frame_count} frames from sprite sheet...")
+        # Now load ALL animations for this entity
+        self._load_all_animations()
         
-        # Extract frames using base class method
-        sprite_height = self.sprite_sheet.get_height()
-        self.frames = self.extract_frames(self.sprite_sheet, frame_width, sprite_height, frame_count)
-        
-        # Store frames in animation dictionary (using "idle" as default animation)
-        self.animations["idle"] = self.frames
-        
-        # Set initial image based on whether this item has a fixed frame
-        if self.frames:
-            self.current_animation = "idle"
-            
-            # Use fixed frame index for specific items, otherwise use frame 0
-            if self.fixed_frame_index is not None and self.fixed_frame_index < len(self.frames):
-                self.image = self.frames[self.fixed_frame_index]
-                self.current_frame = self.fixed_frame_index
-                print(f"  Set initial image to fixed frame {self.fixed_frame_index}: {self.image}")
-            else:
-                if self.fixed_frame_index is not None and self.fixed_frame_index >= len(self.frames):
-                    print(f"  WARNING: Fixed frame index {self.fixed_frame_index} is out of range (only {len(self.frames)} frames), using frame 0")
-                self.image = self.frames[0]
-                print(f"  Set initial image to frame 0: {self.image}")
+        # Set initial animation based on whether this is an item with fixed frame
+        if self.fixed_frame_index is not None:
+            # Items with fixed frames use a single-frame "idle" animation
+            if "idle_front" in self.animations:
+                self.current_animation = "idle_front"
+                self.set_animation_frame(self.fixed_frame_index)
         else:
-            print(f"  ERROR: No frames were extracted!")
+            # Default to idle animation based on orientation
+            default_anim = self.get_animation_for_orientation("idle")
+            if default_anim in self.animations:
+                self.set_animation(default_anim)
+            elif "idle_front" in self.animations:
+                self.set_animation("idle_front")
+        
+        print(f"  Entity initialized with {len(self.animations)} animations")
     
     def update(self, dt: float) -> None:
         """Update entity animation
@@ -445,8 +573,33 @@ class Entity(Drawable):
             dt: Delta time in seconds
         """
         # Only animate if this entity doesn't have a fixed frame
-        if self.fixed_frame_index is None and len(self.frames) > 1:
-            self.update_animation_frame(advance=True)
+        if self.fixed_frame_index is None and self.current_animation:
+            frames = self.animations.get(self.current_animation, [])
+            if len(frames) > 1:
+                self.update_animation_frame(advance=True)
+    
+    def set_moving_state(self, is_moving: bool) -> None:
+        """Update entity animation based on movement state
+        
+        Args:
+            is_moving: True if entity is currently moving, False if idle
+        """
+        # Skip if this entity has a fixed frame (like items)
+        if self.fixed_frame_index is not None:
+            return
+        
+        # Determine animation based on movement state and orientation
+        if is_moving:
+            # Use walk animation
+            anim_name = self.get_animation_for_orientation("walk")
+        else:
+            # Use idle animation
+            anim_name = self.get_animation_for_orientation("idle")
+        
+        # Only change animation if it's different from current
+        if anim_name in self.animations and anim_name != self.current_animation:
+            self.set_animation(anim_name)
+            print(f"  {self.name}: animation changed to {anim_name}")
     
     def is_crate(self) -> bool:
         """Check if entity is a crate"""

@@ -74,32 +74,38 @@ class Hero(Drawable):
             ("carry_jump_front", "data/sprites/SpriteGfx000Anim011.png", 32, 48, 2),
         ]
         
-        try:
-            # Load each animation
-            for anim_name, file_path, width, height, frames in animation_config:
-                sheet = pygame.image.load(file_path).convert_alpha()
-                self.animations[anim_name] = self.extract_frames(sheet, width, height, frames)
-            
-            # Create left/right animations as references (will be flipped during rendering)
+        # Load each animation using the base class method
+        for anim_name, file_path, width, height, frames in animation_config:
+            self.load_animation_from_file(anim_name, file_path, width, height, frames)
+        
+        # Create left/right animations as references (will be flipped during rendering)
+        if "idle_back" in self.animations:
             self.animations["idle_left"] = self.animations["idle_back"]
             self.animations["idle_right"] = self.animations["idle_back"]
+        if "walk_back" in self.animations:
             self.animations["walk_left"] = self.animations["walk_back"]
+        if "walk_front" in self.animations:
             self.animations["walk_right"] = self.animations["walk_front"]
+        if "jump_back" in self.animations:
             self.animations["jump_left"] = self.animations["jump_back"]
+        if "jump_front" in self.animations:
             self.animations["jump_right"] = self.animations["jump_front"]
+        if "carry_walk_back" in self.animations:
             self.animations["carry_walk_left"] = self.animations["carry_walk_back"]
+        if "carry_walk_front" in self.animations:
             self.animations["carry_walk_right"] = self.animations["carry_walk_front"]
+        if "carry_jump_back" in self.animations:
             self.animations["carry_jump_left"] = self.animations["carry_jump_back"]
+        if "carry_jump_front" in self.animations:
             self.animations["carry_jump_right"] = self.animations["carry_jump_front"]
-            
-            # Create carry idle animations using first frame of pickup animations
+        
+        # Create carry idle animations using first frame of pickup animations
+        if "pickup_back" in self.animations and self.animations["pickup_back"]:
             self.animations["carry_idle_back"] = [self.animations["pickup_back"][0]]
-            self.animations["carry_idle_front"] = [self.animations["pickup_front"][0]]
             self.animations["carry_idle_left"] = [self.animations["pickup_back"][0]]
             self.animations["carry_idle_right"] = [self.animations["pickup_back"][0]]
-            
-        except (pygame.error, FileNotFoundError) as e:
-            print(f"Warning: Could not load hero animation sprites: {e}")
+        if "pickup_front" in self.animations and self.animations["pickup_front"]:
+            self.animations["carry_idle_front"] = [self.animations["pickup_front"][0]]
     
     def update_z_velocity(self) -> None:
         """Calculate Z-axis velocity based on position change"""
@@ -216,7 +222,7 @@ class Hero(Drawable):
             self.set_animation_frame(frame_index)
         else:
             # Walk/idle animations advance automatically
-            should_advance = is_moving or len(self.animations[self.current_animation]) == 1
+            should_advance = is_moving or len(self.animations.get(self.current_animation, [])) == 1
             self.update_animation_frame(advance=should_advance)
         
     def grab_entity(self, entity: 'Entity') -> None:

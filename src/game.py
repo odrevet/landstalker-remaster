@@ -1589,6 +1589,7 @@ class Game:
                 for entity in self.room.entities:
                     if hasattr(entity, 'script_handler') and entity.script_handler.is_running:
                         entity.script_handler.update()
+                        entity.update(time_delta)
                         
                         # Update entity's screen position
                         entity.update_camera(

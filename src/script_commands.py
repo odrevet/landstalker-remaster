@@ -196,7 +196,6 @@ class ScriptCommands:
             distance_scale = params.get('Distance', 0.0)  # Scale factor
             
             # Actual distance in tiles = distance × 2^(speed-1)
-            # Examples: speed=1,dist=8 → 8×1=8; speed=2,dist=6 → 6×2=12; speed=3,dist=4 → 4×4=16
             speed_multiplier = 2 ** (self.entity.speed - 1)
             actual_distance = distance_scale * speed_multiplier
             
@@ -220,7 +219,7 @@ class ScriptCommands:
             target_y = current_pos.y + (dy * actual_distance)
             
             # Movement speed in tiles per frame
-            speed_per_frame = self.entity.speed / 16  # Convert entity speed to tiles per frame
+            speed_per_frame = self.entity.speed / 16
             
             self.current_command_state = {
                 'target_x': target_x,
@@ -229,6 +228,10 @@ class ScriptCommands:
                 'dy': dy,
                 'speed': speed_per_frame
             }
+            
+            # Set entity to moving state
+            self.entity.is_moving = True
+            self.entity.set_moving_state(True)
             
             print(f"  [START] MoveRelative: distance_scale={distance_scale:.3f}, "
                 f"entity_speed={self.entity.speed}, actual_distance={actual_distance:.3f} tiles, "
@@ -253,8 +256,13 @@ class ScriptCommands:
                 state['target_x'],
                 state['target_y'],
                 current_pos.z,
-                0, 0, 0, 0, 0  # These will be updated by game loop
+                0, 0, 0, 0, 0
             )
+            
+            # Set entity to idle state
+            self.entity.is_moving = False
+            self.entity.set_moving_state(False)
+            
             print(f"  [COMPLETE] MoveRelative: reached target ({state['target_x']:.3f}, {state['target_y']:.3f})")
             self.current_command_state = None
             return True  # Command complete
@@ -440,13 +448,96 @@ class ScriptCommands:
         return True
     
     def cmd_move_until_collision(self, params: Optional[Dict[str, Any]] = None) -> bool:
-        """Move entity in current direction until collision
+        """Move entity in current direction until collision with non-walkable terrain
         
         Returns:
-            True (stub)
+            True if collision detected, False if still moving
         """
-        print(f"  [STUB] MoveUntilCollision")
-        return True
+        if self.current_command_state is None:
+            speed_per_frame = self.entity.speed / 16
+            
+            orientation = self.entity.orientation
+            direction_map = {
+                'NE': (0, -1),
+                'SE': (1, 0),
+                'SW': (0, 1),
+                'NW': (-1, 0),
+            }
+            dx, dy = direction_map.get(orientation, (0.0, 0.0))
+            
+            self.current_command_state = {
+                'dx': dx,
+                'dy': dy,
+                'speed': speed_per_frame
+            }
+            
+            # Set entity to moving state
+            self.entity.is_moving = True
+            self.entity.set_moving_state(True)
+            
+            print(f"  [START] MoveUntilCollision: orientation={orientation}")
+        
+        state = self.current_command_state
+        current_pos = self.entity.get_world_pos()
+        
+        # Calculate next position
+        move_x = state['dx'] * state['speed']
+        move_y = state['dy'] * state['speed']
+        
+        next_x = current_pos.x + move_x
+        next_y = current_pos.y + move_y
+        
+        # Check if next position would be non-walkable
+        next_tile_x = int(next_x)
+        next_tile_y = int(next_y)
+        
+        # Get heightmap from game
+        if self.game and hasattr(self.game, 'room'):
+            heightmap = self.game.room.heightmap
+            
+            # Check bounds
+            if (next_tile_x < 0 or next_tile_y < 0 or 
+                next_tile_x >= heightmap.get_width() or 
+                next_tile_y >= heightmap.get_height()):
+                # Out of bounds - stop moving
+                self.entity.is_moving = False
+                self.entity.set_moving_state(False)
+                print(f"  [COMPLETE] MoveUntilCollision: out of bounds at ({next_tile_x}, {next_tile_y})")
+                self.current_command_state = None
+                return True
+            
+            # Check if cell is walkable
+            cell = heightmap.get_cell(next_tile_x, next_tile_y)
+            if not cell or not cell.is_walkable():
+                # Hit non-walkable terrain - stop moving
+                self.entity.is_moving = False
+                self.entity.set_moving_state(False)
+                print(f"  [COMPLETE] MoveUntilCollision: hit non-walkable at ({next_tile_x}, {next_tile_y})")
+                self.current_command_state = None
+                return True
+            
+            # Check if height difference is too great (can't walk up/down steep slopes)
+            if cell.height > current_pos.z + 1.0:  # Can't climb more than 1 tile
+                self.entity.is_moving = False
+                self.entity.set_moving_state(False)
+                print(f"  [COMPLETE] MoveUntilCollision: height difference too great at ({next_tile_x}, {next_tile_y})")
+                self.current_command_state = None
+                return True
+        
+        # Move to next position
+        self.entity.set_world_pos(next_x, next_y, current_pos.z, 0, 0, 0, 0, 0)
+        
+        update_carried_positions(
+            self.game.hero,
+            self.game.room.entities,
+            self.game.room.heightmap.left_offset,
+            self.game.room.heightmap.top_offset,
+            self.game.camera_x,
+            self.game.camera_y,
+            self.game.get_tilemap_height()
+        )
+        
+        return False  # Continue moving
     
     def cmd_move_up_relative(self, params: Dict[str, Any]) -> bool:
         """Move entity up (increase Z) by relative distance

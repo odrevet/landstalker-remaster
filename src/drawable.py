@@ -1,6 +1,6 @@
 import pygame
 from pygame.math import Vector2, Vector3
-from typing import Tuple, List, Dict, TYPE_CHECKING
+from typing import Tuple, List, Dict, Optional, TYPE_CHECKING
 from utils import cartesian_to_iso
 
 if TYPE_CHECKING:
@@ -137,7 +137,6 @@ class Drawable:
             camera_y: Camera Y position
             tilemap_height: Map height (GetHeight())
         """    
-        #print('---')
         SCALE_FACTOR = 256  # 0x100
 
         # Scale offsets
@@ -151,29 +150,20 @@ class Drawable:
 
         # hitbox width/length
         if self.bbox.size_in_tiles * 8 >= 0x0C:
-            #print("ADD 0X80")
             x += 0x80
             y += 0x80
 
         xx = x - LEFT
         yy = y - TOP
 
-        #print(f"input {x} {y} {z}")
-        #print(f"LEFT {LEFT} TOP {TOP} HEIGHT {HEIGHT}")
-
         ix:int = (xx - yy + (HEIGHT - SCALE_FACTOR)) * 2 + LEFT
         iy:int = (xx + yy - z * 2) + TOP
-
-        #print(f"({xx} + {yy} - {z} * 2) + {TOP}")
 
         tile_width = 8
         tile_height = 8
 
         px:int = (ix * tile_width)  // SCALE_FACTOR
         py:int = (iy * tile_height) // SCALE_FACTOR
-
-        #print(f"ix={ix} iy={iy}")
-        #print(f"px={px} py={py}")
 
         # Get subsprite offsets if available (from Entity class animation YAML)
         subsprite_x = 0
@@ -266,6 +256,28 @@ class Drawable:
             frames.append(frame)
         return frames
     
+    def load_animation_from_file(self, animation_name: str, file_path: str, 
+                                frame_width: int, frame_height: int, num_frames: int) -> bool:
+        """Load an animation from a sprite sheet file
+        
+        Args:
+            animation_name: Name to store the animation under
+            file_path: Path to the sprite sheet file
+            frame_width: Width of each frame
+            frame_height: Height of each frame  
+            num_frames: Number of frames to extract
+            
+        Returns:
+            True if animation loaded successfully, False otherwise
+        """
+        try:
+            sheet = pygame.image.load(file_path).convert_alpha()
+            self.animations[animation_name] = self.extract_frames(sheet, frame_width, frame_height, num_frames)
+            return True
+        except (pygame.error, FileNotFoundError) as e:
+            print(f"Warning: Could not load animation {animation_name} from {file_path}: {e}")
+            return False
+    
     def set_animation(self, animation_name: str) -> None:
         """Set the current animation
         
@@ -276,6 +288,9 @@ class Drawable:
             self.current_animation = animation_name
             self.current_frame = 0
             self.animation_timer = 0.0
+            # Update image immediately to first frame
+            if self.animations[animation_name]:
+                self.image = self.animations[animation_name][0]
     
     def update_animation_frame(self, advance: bool = True) -> None:
         """Update the current animation frame
@@ -318,13 +333,37 @@ class Drawable:
             self.current_frame = frame_index
             self.image = frames[frame_index]
     
+    def get_animation_for_orientation(self, base_animation: str, orientation: Optional[str] = None) -> str:
+        """Get the appropriate animation name based on orientation
+        
+        Args:
+            base_animation: Base animation name (e.g., "walk", "idle")
+            orientation: Direction to face (NE, SE, SW, NW), uses self.orientation if None
+            
+        Returns:
+            Full animation name with direction suffix (e.g., "walk_back", "idle_front")
+        """
+        if orientation is None:
+            orientation = self.orientation
+        
+        # Map orientations to animation suffixes
+        direction_map = {
+            "NE": "back",
+            "SE": "front", 
+            "NW": "back",
+            "SW": "front",
+        }
+        
+        direction = direction_map.get(orientation, "front")
+        return f"{base_animation}_{direction}"
+    
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the object on the surface
         
         Args:
             surface: Pygame surface to draw on
         """
-        if self.visible:
+        if self.visible and self.image is not None:
             display_image = self.image 
             if self.display_rotated:
                 display_image = pygame.transform.flip(self.image, True, False)
